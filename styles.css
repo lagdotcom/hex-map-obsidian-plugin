@@ -1,0 +1,17 @@
+.hexMap .hex {
+  stroke: white;
+  stroke-width: 1px;
+  cursor: pointer;
+}
+
+.hexMap .coord {
+  alignment-baseline: hanging;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+.hexMap .icon {
+  alignment-baseline: middle;
+  text-anchor: middle;
+  pointer-events: none;
+}

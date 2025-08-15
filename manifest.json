@@ -1,0 +1,10 @@
+{
+	"id": "hex-map-plugin",
+	"name": "Hex Map Plugin",
+	"version": "1.0.0",
+	"minAppVersion": "0.15.0",
+	"description": "Generates hex maps!",
+	"author": "Lag.Com",
+	"authorUrl": "https://lag.codes",
+	"isDesktopOnly": false
+}
