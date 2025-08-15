@@ -1,3 +1,10 @@
+.hexMapContainer {
+  cursor: grab;
+}
+.hexMapContainer.panning {
+  cursor: grabbing;
+}
+
 .hexMap .hex {
   stroke: white;
   stroke-width: 1px;
@@ -8,10 +15,12 @@
   alignment-baseline: hanging;
   text-anchor: middle;
   pointer-events: none;
+  user-select: none;
 }
 
 .hexMap .icon {
   alignment-baseline: middle;
   text-anchor: middle;
   pointer-events: none;
+  user-select: none;
 }
