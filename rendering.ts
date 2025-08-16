@@ -6,6 +6,7 @@ import {
   Orientation,
   Point,
 } from "honeycomb-grid";
+import { addTerrainIcon } from "icons";
 import { HexMapPluginSettings } from "main";
 import { FrontMatterCache, TFile } from "obsidian";
 import { getOptions } from "options";
@@ -154,8 +155,8 @@ export default async function renderHexMap(
     attr: { viewBox: cm.viewBox },
   });
   for (const { hex, points, name, path, terrain, icon } of hexData) {
-    const fill = settings.terrainColours[terrain ?? "Unknown"];
-    if (!fill) console.warn("missing colour for " + terrain);
+    const ts = settings.terrain[terrain ?? "Unknown"];
+    if (!ts) console.warn("missing data for " + terrain);
 
     const g = svg.createSvg("g");
 
@@ -164,10 +165,20 @@ export default async function renderHexMap(
 
     g.createSvg("polygon", {
       cls: "hex",
-      attr: { points, fill: fill ?? "#222222" },
+      attr: { points, fill: ts?.bg ?? "#222222" },
     }).addEventListener("pointerup", () => {
       if (!ignoreClick) this.app.workspace.openLinkText(name, path);
     });
+
+    if (ts?.icon)
+      addTerrainIcon(
+        g,
+        hex.x,
+        hex.y,
+        options.terrainIconSize,
+        ts.icon,
+        ts?.fg ?? "black"
+      );
 
     const coord = g.createSvg("text", {
       cls: "coord",

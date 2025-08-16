@@ -24,3 +24,7 @@
   pointer-events: none;
   user-select: none;
 }
+
+.hexMap .terrainIcon {
+  pointer-events: none;
+}
