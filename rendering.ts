@@ -212,4 +212,6 @@ export default async function renderHexMap(
     el.classList.remove("panning");
     ignoreReset.schedule();
   });
+  pz.on("zoom", () => (ignoreClick = true));
+  pz.on("zoomend", () => ignoreReset.schedule());
 }
