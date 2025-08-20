@@ -5,26 +5,31 @@
   cursor: grabbing;
 }
 
-.hexMap .hex {
+.hexMap .coords,
+.hexMap .icons,
+.hexMap .terrainIcons,
+.hexMap .rivers {
+  pointer-events: none;
+  user-select: none;
+}
+
+.hexMap .terrain polygon {
   stroke: white;
   stroke-width: 1px;
   cursor: pointer;
 }
 
-.hexMap .coord {
+.hexMap .coords text {
   alignment-baseline: hanging;
   text-anchor: middle;
-  pointer-events: none;
-  user-select: none;
 }
 
-.hexMap .icon {
+.hexMap .icons text {
   alignment-baseline: middle;
   text-anchor: middle;
-  pointer-events: none;
-  user-select: none;
 }
 
-.hexMap .terrainIcon {
-  pointer-events: none;
+.hexMap .rivers polyline {
+  fill: none;
+  stroke-linecap: round;
 }

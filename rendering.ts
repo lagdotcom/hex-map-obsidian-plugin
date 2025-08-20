@@ -4,12 +4,12 @@ import OffsetCoordinates from "hex/OffsetCoordinates";
 import { flat, pointy } from "hex/Orientation";
 import Point from "hex/Point";
 import { addTerrainIcon } from "icons";
-import { HexMapPluginSettings } from "main";
-import { App, FrontMatterCache, TFile } from "obsidian";
+import { App } from "obsidian";
 import { getOptions, HexMapOptions } from "options";
 import createPanZoom from "panzoom";
+import { HexMapPluginSettings } from "settings";
 import Soon from "Soon";
-import { isDefined } from "tools";
+import { asNumber, isDefined } from "tools";
 
 function toInt(v: any) {
   const n = Number(v);
@@ -80,15 +80,26 @@ class CoordManager {
   }
 
   hexConverter = (p: Point) => {
-    const x = p.x;
-    const y = p.y;
-    this.left = Math.min(this.left, x);
-    this.right = Math.max(this.right, x);
-    this.top = Math.min(this.top, y);
-    this.bot = Math.max(this.bot, y);
-
-    return `${x},${y}`;
+    this.left = Math.min(this.left, p.x);
+    this.right = Math.max(this.right, p.x);
+    this.top = Math.min(this.top, p.y);
+    this.bot = Math.max(this.bot, p.y);
+    return p.toString();
   };
+}
+
+const riverPattern = /river:(?:(\d+):)?(.*)*/gi;
+const coordPattern = /(\d+)\.(\d+)/gi;
+function* getRivers(source: string, options: HexMapOptions) {
+  for (const [, rawWidth, path] of source.matchAll(riverPattern)) {
+    yield {
+      width: asNumber(rawWidth, options.riverWidth),
+      coords: Array.from(path.matchAll(coordPattern)).map(([, col, row]) => ({
+        col: Number(col),
+        row: Number(row),
+      })),
+    };
+  }
 }
 
 export default async function renderHexMap(
@@ -125,7 +136,7 @@ export default async function renderHexMap(
       return coords.map((co) => {
         const hex = Hex.fromQOffsetCoordinates(offset, co);
         const { x, y } = layout.toPixel(hex);
-        const { col, row } = hex.toOffsetCoordinates();
+        const { col, row } = co;
         const points = layout
           .getPolygonCorners(hex)
           .map(cm.hexConverter)
@@ -153,25 +164,30 @@ export default async function renderHexMap(
     cls: "hexMap",
     attr: { viewBox: cm.viewBox },
   });
+
+  const gTerrain = svg.createSvg("g", { cls: "terrain" });
+  const gTerrainIcons = svg.createSvg("g", { cls: "terrainIcons" });
+  const gRivers = svg.createSvg("g", { cls: "rivers" });
+  const gCoords = svg.createSvg("g", { cls: "coords" });
+  const gIcons = svg.createSvg("g", { cls: "icons" });
+
   for (const { x, y, col, row, points, name, path, terrain, icon } of hexData) {
     const ts = settings.terrain[terrain ?? "Unknown"];
     if (!ts) console.warn("missing data for " + terrain);
 
-    const g = svg.createSvg("g");
-
-    const title = g.createSvg("title");
-    title.textContent = name;
-
-    g.createSvg("polygon", {
-      cls: "hex",
+    const polygon = gTerrain.createSvg("polygon", {
       attr: { points, fill: ts?.bg ?? "#222222" },
-    }).addEventListener("pointerup", () => {
+    });
+    polygon.addEventListener("pointerup", () => {
       if (!ignoreClick) this.app.workspace.openLinkText(name, path);
     });
 
+    const title = polygon.createSvg("title");
+    title.textContent = name;
+
     if (ts?.icon)
       addTerrainIcon(
-        g,
+        gTerrainIcons,
         x,
         y,
         options.terrainIconSize,
@@ -179,28 +195,30 @@ export default async function renderHexMap(
         ts?.fg ?? "black"
       );
 
-    const coord = g.createSvg("text", {
-      cls: "coord",
-      attr: {
-        x,
-        y: y + options.coordOffset,
-        "font-size": options.coordSize,
-      },
+    const coord = gCoords.createSvg("text", {
+      attr: { x, y: y + options.coordOffset, "font-size": options.coordSize },
     });
     coord.textContent = `${col}.${row}`;
 
     if (icon) {
-      const ie = g.createSvg("text", {
-        cls: "icon",
-        attr: {
-          x,
-          y,
-          "font-size": options.iconSize,
-        },
+      const ie = gIcons.createSvg("text", {
+        attr: { x, y, "font-size": options.iconSize },
       });
       ie.textContent = icon;
     }
   }
+
+  for (const { width, coords } of getRivers(source, options))
+    gRivers.createSvg("polyline", {
+      attr: {
+        stroke: options.riverColour,
+        "stroke-width": width,
+        points: coords
+          .map((co) => layout.toPixel(Hex.fromQOffsetCoordinates(offset, co)))
+          .map((p) => p.toString())
+          .join(" "),
+      },
+    });
 
   const pz = createPanZoom(svg, {
     minZoom: 0.5,

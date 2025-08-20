@@ -1,13 +1,14 @@
 import { iconOptions, TerrainIconName } from "icons";
-import HexMapPlugin, {
+import HexMapPlugin from "main";
+import { PluginSettingTab, App, Setting } from "obsidian";
+import {
   StringKey,
   NumberKey,
-  asNumber,
   DEFAULT_SETTINGS,
   TerrainSettings,
-} from "main";
-import { PluginSettingTab, App, Setting } from "obsidian";
+} from "settings";
 import TextModal from "TextModal";
+import { asNumber } from "tools";
 
 export default class HexMapSettingTab extends PluginSettingTab {
   coloursEl: HTMLDivElement;
@@ -29,6 +30,14 @@ export default class HexMapSettingTab extends PluginSettingTab {
     this.addNumberField("coordSize", "Coordinate Size");
     this.addNumberField("iconSize", "Icon Size");
     this.addNumberField("terrainIconSize", "Terrain Icon Size");
+    this.addNumberField("riverWidth", "River Width");
+
+    new Setting(this.containerEl).setName("River Colour").addColorPicker((el) =>
+      el.setValue(this.plugin.settings.riverColour).onChange(async (value) => {
+        this.plugin.settings.riverColour = value;
+        await this.plugin.saveSettings();
+      })
+    );
 
     containerEl.createEl("h1", { text: "Terrain Display" });
     this.coloursEl = containerEl.createDiv();
@@ -36,7 +45,7 @@ export default class HexMapSettingTab extends PluginSettingTab {
     for (const [key, val] of Object.entries(this.plugin.settings.terrain).sort(
       ([a], [b]) => a.localeCompare(b)
     ))
-      this.addColourField(key, val);
+      this.addTerrainColourField(key, val);
 
     new Setting(containerEl).addButton((el) =>
       el.setButtonText("Add").onClick(() => {
@@ -46,7 +55,10 @@ export default class HexMapSettingTab extends PluginSettingTab {
           "Terrain Type",
           async (value) => {
             this.plugin.settings.terrain[value] = { bg: "black", fg: "white" };
-            this.addColourField(value, this.plugin.settings.terrain[value]);
+            this.addTerrainColourField(
+              value,
+              this.plugin.settings.terrain[value]
+            );
             await this.plugin.saveSettings();
           }
         ).open();
@@ -74,7 +86,7 @@ export default class HexMapSettingTab extends PluginSettingTab {
     );
   }
 
-  addColourField(key: string, val: TerrainSettings) {
+  addTerrainColourField(key: string, val: TerrainSettings) {
     const setting = new Setting(this.coloursEl)
       .setName(key)
       .addColorPicker((el) =>

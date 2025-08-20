@@ -1,4 +1,4 @@
-import { HexMapPluginSettings } from "main";
+import { HexMapPluginSettings } from "settings";
 import { KeysMatching } from "tools";
 
 export interface HexMapOptions {
@@ -13,6 +13,8 @@ export interface HexMapOptions {
   coordSize: number;
   iconSize: number;
   terrainIconSize: number;
+  riverWidth: number;
+  riverColour: string;
 }
 type NumberKey = KeysMatching<HexMapOptions, number>;
 type StringKey = KeysMatching<HexMapOptions, string>;
@@ -23,6 +25,7 @@ const numberKeys: NumberKey[] = [
   "coordSize",
   "iconSize",
   "terrainIconSize",
+  "riverWidth",
 ] as const;
 
 const keyValuePattern = /(\w+)=(\w+)/g;
@@ -39,6 +42,8 @@ export function getOptions(source: string, settings: HexMapPluginSettings) {
     coordSize,
     iconSize,
     terrainIconSize,
+    riverWidth,
+    riverColour,
   } = settings;
   const options: HexMapOptions = {
     key: "",
@@ -52,6 +57,8 @@ export function getOptions(source: string, settings: HexMapPluginSettings) {
     coordSize,
     iconSize,
     terrainIconSize,
+    riverWidth,
+    riverColour,
   };
 
   for (const [, key, value] of source.matchAll(keyValuePattern)) {
