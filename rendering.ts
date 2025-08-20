@@ -202,7 +202,11 @@ export default async function renderHexMap(
     }
   }
 
-  const pz = createPanZoom(svg, { minZoom: 0.5, maxZoom: 3 });
+  const pz = createPanZoom(svg, {
+    minZoom: 0.5,
+    maxZoom: 3,
+    beforeWheel: () => ignoreReset.schedule(),
+  });
   pz.on("panstart", () => {
     el.classList.add("panning");
     ignoreClick = true;
