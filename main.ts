@@ -21,6 +21,8 @@ const ts = (
 });
 
 export interface HexMapPluginSettings {
+  orientation: string;
+  offset: string;
   terrainKey: string;
   iconKey: string;
   size: number;
@@ -36,6 +38,8 @@ export type StringKey = KeysMatching<HexMapPluginSettings, string>;
 export type NumberKey = KeysMatching<HexMapPluginSettings, number>;
 
 export const DEFAULT_SETTINGS: HexMapPluginSettings = {
+  orientation: "flat",
+  offset: "odd",
   terrainKey: "terrain",
   iconKey: "icon",
   size: 10,
@@ -72,7 +76,7 @@ export default class HexMapPlugin extends Plugin {
     this.addSettingTab(new HexMapSettingTab(this.app, this));
 
     this.registerMarkdownCodeBlockProcessor("hexmap", (source, el) =>
-      renderHexMap(this.settings, source, el)
+      renderHexMap(this.app, this.settings, source, el)
     );
   }
 

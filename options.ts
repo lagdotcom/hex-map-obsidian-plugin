@@ -1,7 +1,9 @@
 import { HexMapPluginSettings } from "main";
 import { KeysMatching } from "tools";
 
-interface HexMapOptions {
+export interface HexMapOptions {
+  orientation: string;
+  offset: string;
   key: string;
   terrainKey: string;
   iconKey: string;
@@ -26,6 +28,8 @@ const keyValuePattern = /(\w+)=(\w+)/g;
 
 export function getOptions(source: string, settings: HexMapPluginSettings) {
   const {
+    orientation,
+    offset,
     terrainKey,
     iconKey,
     size,
@@ -37,6 +41,8 @@ export function getOptions(source: string, settings: HexMapPluginSettings) {
   } = settings;
   const options: HexMapOptions = {
     key: "",
+    orientation,
+    offset,
     terrainKey,
     iconKey,
     size,

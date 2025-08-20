@@ -1,17 +1,15 @@
-import {
-  defineHex,
-  Grid,
-  Hex,
-  HexCoordinates,
-  Orientation,
-  Point,
-} from "honeycomb-grid";
+import Hex from "hex/Hex";
+import Layout from "hex/Layout";
+import OffsetCoordinates from "hex/OffsetCoordinates";
+import { flat, pointy } from "hex/Orientation";
+import Point from "hex/Point";
 import { addTerrainIcon } from "icons";
 import { HexMapPluginSettings } from "main";
-import { FrontMatterCache, TFile } from "obsidian";
-import { getOptions } from "options";
+import { App, FrontMatterCache, TFile } from "obsidian";
+import { getOptions, HexMapOptions } from "options";
 import createPanZoom from "panzoom";
 import Soon from "Soon";
+import { isDefined } from "tools";
 
 function toInt(v: any) {
   const n = Number(v);
@@ -22,14 +20,14 @@ function toInt(v: any) {
 
 const dotPattern = /(\d+)\.(\d+)/;
 const commaPattern = /(\d+),(\d+)/;
-function getCoords(v: any): HexCoordinates[] | undefined {
+function getCoords(v: any): OffsetCoordinates[] | undefined {
   if (Array.isArray(v)) {
     if (v.length === 2) {
       const [col, row] = v.map(toInt);
       if (!isNaN(col) && !isNaN(row)) return [{ col, row }];
     }
 
-    const parsed: HexCoordinates[] = [];
+    const parsed: OffsetCoordinates[] = [];
     for (const item of v) {
       const result = getCoords(item);
       if (result) parsed.push(...result);
@@ -94,6 +92,7 @@ class CoordManager {
 }
 
 export default async function renderHexMap(
+  app: App,
   settings: HexMapPluginSettings,
   source: string,
   el: HTMLElement
@@ -106,46 +105,46 @@ export default async function renderHexMap(
 
   el.classList.add("hexMapContainer");
 
-  const MyHex = defineHex({
-    dimensions: options.size,
-    orientation: Orientation.FLAT,
-  });
-  const hexes: Hex[] = [];
-  const hexFiles: Map<Hex, TFile> = new Map();
-  const hexMatter: Map<Hex, FrontMatterCache> = new Map();
-  for (const file of this.app.vault.getMarkdownFiles()) {
-    const cached = this.app.metadataCache.getFileCache(file);
-    const fm = cached?.frontmatter;
-    if (!fm) continue;
-
-    const coords = getCoords(fm[options.key]);
-    if (!coords) continue;
-
-    for (const co of coords) {
-      const hex = new MyHex(co);
-      hexes.push(hex);
-      hexFiles.set(hex, file);
-      hexMatter.set(hex, fm);
-    }
-  }
-
-  const grid = Grid.fromIterable(hexes);
-
+  const layout = new Layout(
+    options.orientation === "flat" ? flat : pointy,
+    new Point(options.size, options.size)
+  );
+  const offset = options.offset === "even" ? 1 : -1;
   const cm = new CoordManager(options.margin);
-  const hexData = grid.toArray().map((hex) => {
-    const points = hex.corners.map(cm.hexConverter).join(" ");
-    const file = hexFiles.get(hex)!;
-    const fm = hexMatter.get(hex)!;
 
-    return {
-      hex,
-      points,
-      name: file.basename,
-      path: file.path,
-      terrain: fm[options.terrainKey],
-      icon: fm[options.iconKey],
-    };
-  });
+  const hexData = app.vault
+    .getMarkdownFiles()
+    .flatMap((file) => {
+      const cached = app.metadataCache.getFileCache(file);
+      const fm = cached?.frontmatter;
+      if (!fm) return;
+
+      const coords = getCoords(fm[options.key]);
+      if (!coords) return;
+
+      return coords.map((co) => {
+        const hex = Hex.fromQOffsetCoordinates(offset, co);
+        const { x, y } = layout.toPixel(hex);
+        const { col, row } = hex.toOffsetCoordinates();
+        const points = layout
+          .getPolygonCorners(hex)
+          .map(cm.hexConverter)
+          .join(" ");
+
+        return {
+          x,
+          y,
+          col,
+          row,
+          points,
+          name: file.basename,
+          path: file.path,
+          terrain: fm[options.terrainKey],
+          icon: fm[options.iconKey],
+        };
+      });
+    })
+    .filter(isDefined);
 
   let ignoreClick = false;
   const ignoreReset = new Soon(() => (ignoreClick = false));
@@ -154,7 +153,7 @@ export default async function renderHexMap(
     cls: "hexMap",
     attr: { viewBox: cm.viewBox },
   });
-  for (const { hex, points, name, path, terrain, icon } of hexData) {
+  for (const { x, y, col, row, points, name, path, terrain, icon } of hexData) {
     const ts = settings.terrain[terrain ?? "Unknown"];
     if (!ts) console.warn("missing data for " + terrain);
 
@@ -173,8 +172,8 @@ export default async function renderHexMap(
     if (ts?.icon)
       addTerrainIcon(
         g,
-        hex.x,
-        hex.y,
+        x,
+        y,
         options.terrainIconSize,
         ts.icon,
         ts?.fg ?? "black"
@@ -183,19 +182,19 @@ export default async function renderHexMap(
     const coord = g.createSvg("text", {
       cls: "coord",
       attr: {
-        x: hex.x,
-        y: hex.y + options.coordOffset,
+        x,
+        y: y + options.coordOffset,
         "font-size": options.coordSize,
       },
     });
-    coord.textContent = `${hex.col}.${hex.row}`;
+    coord.textContent = `${col}.${row}`;
 
     if (icon) {
       const ie = g.createSvg("text", {
         cls: "icon",
         attr: {
-          x: hex.x,
-          y: hex.y,
+          x,
+          y,
           "font-size": options.iconSize,
         },
       });
