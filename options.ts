@@ -22,6 +22,7 @@ const numberKeys: NumberKey[] = [
   "coordOffset",
   "coordSize",
   "iconSize",
+  "terrainIconSize",
 ] as const;
 
 const keyValuePattern = /(\w+)=(\w+)/g;
