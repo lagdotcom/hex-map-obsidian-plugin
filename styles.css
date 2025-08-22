@@ -8,7 +8,8 @@
 .hexMap .coords,
 .hexMap .icons,
 .hexMap .terrainIcons,
-.hexMap .rivers {
+.hexMap .rivers,
+.hexMap .overlays {
   pointer-events: none;
   user-select: none;
 }

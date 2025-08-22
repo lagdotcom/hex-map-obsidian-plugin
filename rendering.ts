@@ -1,54 +1,14 @@
 import Hex from "hex/Hex";
 import Layout from "hex/Layout";
-import OffsetCoordinates from "hex/OffsetCoordinates";
 import { flat, pointy } from "hex/Orientation";
 import Point from "hex/Point";
 import { addTerrainIcon } from "icons";
 import { App } from "obsidian";
-import { getOptions, HexMapOptions } from "options";
 import createPanZoom from "panzoom";
+import { getCoords, getOptions, getOverlays, getRivers } from "parsing";
 import { HexMapPluginSettings } from "settings";
 import Soon from "Soon";
-import { asNumber, isDefined } from "tools";
-
-function toInt(v: any) {
-  const n = Number(v);
-  const f = Math.floor(n);
-  if (f < n) return NaN;
-  return n;
-}
-
-const dotPattern = /(\d+)\.(\d+)/;
-const commaPattern = /(\d+),(\d+)/;
-function getCoords(v: any): OffsetCoordinates[] | undefined {
-  if (Array.isArray(v)) {
-    if (v.length === 2) {
-      const [col, row] = v.map(toInt);
-      if (!isNaN(col) && !isNaN(row)) return [{ col, row }];
-    }
-
-    const parsed: OffsetCoordinates[] = [];
-    for (const item of v) {
-      const result = getCoords(item);
-      if (result) parsed.push(...result);
-    }
-    return parsed;
-  }
-
-  if (typeof v === "string") {
-    const dotMatch = dotPattern.exec(v);
-    if (dotMatch) {
-      const [col, row] = dotMatch.slice(1).map(toInt);
-      if (!isNaN(col) && !isNaN(row)) return [{ col, row }];
-    }
-
-    const commaMatch = commaPattern.exec(v);
-    if (commaMatch) {
-      const [col, row] = commaMatch.slice(1).map(toInt);
-      if (!isNaN(col) && !isNaN(row)) return [{ col, row }];
-    }
-  }
-}
+import { isDefined } from "tools";
 
 class CoordManager {
   top: number;
@@ -86,20 +46,6 @@ class CoordManager {
     this.bot = Math.max(this.bot, p.y);
     return p.toString();
   };
-}
-
-const riverPattern = /river:(?:(\d+):)?(.*)*/gi;
-const coordPattern = /(\d+)\.(\d+)/gi;
-function* getRivers(source: string, options: HexMapOptions) {
-  for (const [, rawWidth, path] of source.matchAll(riverPattern)) {
-    yield {
-      width: asNumber(rawWidth, options.riverWidth),
-      coords: Array.from(path.matchAll(coordPattern)).map(([, col, row]) => ({
-        col: Number(col),
-        row: Number(row),
-      })),
-    };
-  }
 }
 
 export default async function renderHexMap(
@@ -152,6 +98,7 @@ export default async function renderHexMap(
           path: file.path,
           terrain: fm[options.terrainKey],
           icon: fm[options.iconKey],
+          tags: cached.tags?.map((t) => t.tag) ?? [],
         };
       });
     })
@@ -170,8 +117,20 @@ export default async function renderHexMap(
   const gRivers = svg.createSvg("g", { cls: "rivers" });
   const gCoords = svg.createSvg("g", { cls: "coords" });
   const gIcons = svg.createSvg("g", { cls: "icons" });
+  const gOverlays = svg.createSvg("g", { cls: "overlays" });
 
-  for (const { x, y, col, row, points, name, path, terrain, icon } of hexData) {
+  for (const {
+    x,
+    y,
+    col,
+    row,
+    points,
+    name,
+    path,
+    terrain,
+    icon,
+    tags,
+  } of hexData) {
     const ts = settings.terrain[terrain ?? "Unknown"];
     if (!ts) console.warn("missing data for " + terrain);
 
@@ -206,6 +165,12 @@ export default async function renderHexMap(
       });
       ie.textContent = icon;
     }
+
+    for (const { tag, fill, opacity } of getOverlays(source))
+      if (tag && tags.includes(tag))
+        gOverlays.createSvg("polygon", {
+          attr: { points, fill, opacity },
+        });
   }
 
   for (const { width, coords } of getRivers(source, options))

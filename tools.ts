@@ -10,3 +10,10 @@ export function asNumber(value: any, defaultValue: number) {
   const number = Number(value);
   return isNaN(number) ? defaultValue : number;
 }
+
+export function toInt(v: any) {
+  const n = Number(v);
+  const f = Math.floor(n);
+  if (f < n) return NaN;
+  return n;
+}
