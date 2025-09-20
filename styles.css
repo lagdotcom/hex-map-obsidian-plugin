@@ -9,6 +9,7 @@
 .hexMap .icons,
 .hexMap .terrainIcons,
 .hexMap .rivers,
+.hexMap .borders,
 .hexMap .overlays {
   pointer-events: none;
   user-select: none;
@@ -33,4 +34,8 @@
 .hexMap .rivers polyline {
   fill: none;
   stroke-linecap: round;
+}
+
+.hexMap .borders polyline {
+  fill: none;
 }

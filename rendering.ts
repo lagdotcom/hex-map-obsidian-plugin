@@ -5,7 +5,13 @@ import Point from "hex/Point";
 import { addTerrainIcon } from "icons";
 import { App } from "obsidian";
 import createPanZoom from "panzoom";
-import { getCoords, getOptions, getOverlays, getRivers } from "parsing";
+import {
+  getBorders,
+  getCoords,
+  getOptions,
+  getOverlays,
+  getRivers,
+} from "parsing";
 import { HexMapPluginSettings } from "settings";
 import Soon from "Soon";
 import { isDefined } from "tools";
@@ -117,6 +123,7 @@ export default async function renderHexMap(
   const gRivers = svg.createSvg("g", { cls: "rivers" });
   const gCoords = svg.createSvg("g", { cls: "coords" });
   const gIcons = svg.createSvg("g", { cls: "icons" });
+  const gBorders = svg.createSvg("g", { cls: "borders" });
   const gOverlays = svg.createSvg("g", { cls: "overlays" });
 
   for (const {
@@ -165,6 +172,12 @@ export default async function renderHexMap(
       });
       ie.textContent = icon;
     }
+
+    for (const { tag, colour, thickness } of getBorders(source))
+      if (tag && tags.includes(tag))
+        gBorders.createSvg("polyline", {
+          attr: { points, stroke: colour, "stroke-width": thickness },
+        });
 
     for (const { tag, fill, opacity } of getOverlays(source))
       if (tag && tags.includes(tag))

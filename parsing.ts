@@ -97,6 +97,17 @@ export function getOverlays(source: string) {
   );
 }
 
+const borderTagPattern = /^border:(#\w+):(\w+)(?::([\d\.]+))?$/gim;
+export function getBorders(source: string) {
+  return Array.from(source.matchAll(borderTagPattern)).map(
+    ([, tag, colour, thickness]) => ({
+      tag,
+      colour,
+      thickness: asNumber(thickness, 1),
+    })
+  );
+}
+
 const dotPattern = /(\d+)\.(\d+)/;
 const commaPattern = /(\d+),(\d+)/;
 export function getCoords(v: any): OffsetCoordinates[] | undefined {
