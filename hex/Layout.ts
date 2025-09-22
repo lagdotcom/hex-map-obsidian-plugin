@@ -37,7 +37,7 @@ export default class Layout {
     return new Point(size.x * cos(angle), size.y * sin(angle));
   }
 
-  getCornerOffsets(h: HexLike) {
+  getCornerOffsets() {
     return [
       this.getCornerOffset(0),
       this.getCornerOffset(1),
@@ -50,6 +50,6 @@ export default class Layout {
 
   getPolygonCorners(h: HexLike) {
     const centre = this.toPixel(h);
-    return this.getCornerOffsets(h).map((o) => centre.add(o));
+    return this.getCornerOffsets().map((o) => centre.add(o));
   }
 }

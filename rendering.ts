@@ -175,7 +175,7 @@ export default async function renderHexMap(
 
     for (const { tag, colour, thickness } of getBorders(source))
       if (tag && tags.includes(tag))
-        gBorders.createSvg("polyline", {
+        gBorders.createSvg("polygon", {
           attr: { points, stroke: colour, "stroke-width": thickness },
         });
 

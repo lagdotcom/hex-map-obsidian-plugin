@@ -1,6 +1,6 @@
 import OffsetCoordinates from "hex/OffsetCoordinates";
-import { asNumber, toInt } from "tools";
 import { HexMapPluginSettings } from "settings";
+import { asNumber, toInt } from "tools";
 import { KeysMatching } from "tools";
 
 export interface HexMapOptions {
@@ -86,7 +86,7 @@ export function getRivers(source: string, options: HexMapOptions) {
   );
 }
 
-const overlayTagPattern = /^overlay:(#\w+):(\w+)(?::([\d\.]+))?$/gim;
+const overlayTagPattern = /^overlay:(#\w+):(\w+)(?::([\d.]+))?$/gim;
 export function getOverlays(source: string) {
   return Array.from(source.matchAll(overlayTagPattern)).map(
     ([, tag, fill, opacity]) => ({
@@ -97,7 +97,7 @@ export function getOverlays(source: string) {
   );
 }
 
-const borderTagPattern = /^border:(#\w+):(\w+)(?::([\d\.]+))?$/gim;
+const borderTagPattern = /^border:(#\w+):(\w+)(?::([\d.]+))?$/gim;
 export function getBorders(source: string) {
   return Array.from(source.matchAll(borderTagPattern)).map(
     ([, tag, colour, thickness]) => ({
@@ -110,7 +110,7 @@ export function getBorders(source: string) {
 
 const dotPattern = /(\d+)\.(\d+)/;
 const commaPattern = /(\d+),(\d+)/;
-export function getCoords(v: any): OffsetCoordinates[] | undefined {
+export function getCoords(v: unknown): OffsetCoordinates[] | undefined {
   if (Array.isArray(v)) {
     if (v.length === 2) {
       const [col, row] = v.map(toInt);

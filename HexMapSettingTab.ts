@@ -1,10 +1,10 @@
 import { iconOptions, TerrainIconName } from "icons";
 import HexMapPlugin from "main";
-import { PluginSettingTab, App, Setting } from "obsidian";
+import { App, PluginSettingTab, Setting } from "obsidian";
 import {
-  StringKey,
-  NumberKey,
   DEFAULT_SETTINGS,
+  NumberKey,
+  StringKey,
   TerrainSettings,
 } from "settings";
 import TextModal from "TextModal";

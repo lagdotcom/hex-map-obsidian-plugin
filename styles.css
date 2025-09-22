@@ -36,6 +36,6 @@
   stroke-linecap: round;
 }
 
-.hexMap .borders polyline {
+.hexMap .borders polygon {
   fill: none;
 }
