@@ -1,7 +1,7 @@
 {
   "id": "hex-map-plugin",
   "name": "Hex Map Plugin",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "minAppVersion": "0.15.0",
   "description": "Generates hex maps!",
   "author": "Lag.Com",
