@@ -82,7 +82,7 @@ export type TerrainIconName = keyof typeof iconLibrary;
 export const iconOptions = Object.fromEntries(
   Object.keys(iconLibrary)
     .sort()
-    .map((k) => [k, k])
+    .map((k) => [k, k]),
 );
 
 export function addTerrainIcon(
@@ -91,7 +91,7 @@ export function addTerrainIcon(
   y: number,
   size: number,
   icon: TerrainIconName,
-  fg: string
+  fg: string,
 ) {
   const html = iconLibrary[icon];
   if (!html) return;

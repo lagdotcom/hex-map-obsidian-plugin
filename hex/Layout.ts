@@ -7,7 +7,7 @@ export default class Layout {
   constructor(
     public orientation: Orientation,
     public size: Point,
-    public origin: Point = new Point(0, 0)
+    public origin: Point = new Point(0, 0),
   ) {}
 
   toPixel(h: HexLike) {

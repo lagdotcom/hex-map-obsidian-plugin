@@ -10,7 +10,7 @@ export interface TerrainSettings {
 const ts = (
   bg: string,
   fg: string,
-  icon?: TerrainIconName
+  icon?: TerrainIconName,
 ): TerrainSettings => ({
   bg,
   fg,

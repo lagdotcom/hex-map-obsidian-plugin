@@ -13,7 +13,10 @@ import { asNumber } from "tools";
 export default class HexMapSettingTab extends PluginSettingTab {
   coloursEl: HTMLDivElement;
 
-  constructor(app: App, public plugin: HexMapPlugin) {
+  constructor(
+    app: App,
+    public plugin: HexMapPlugin,
+  ) {
     super(app, plugin);
   }
 
@@ -21,7 +24,7 @@ export default class HexMapSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    containerEl.createEl("h1", { text: "Default Map Settings" });
+    containerEl.createEl("h2", { text: "Default Map Settings" });
     this.addTextField("terrainKey", "Terrain Key");
     this.addTextField("iconKey", "Icon Key");
     this.addNumberField("size", "Hex Size");
@@ -36,14 +39,14 @@ export default class HexMapSettingTab extends PluginSettingTab {
       el.setValue(this.plugin.settings.riverColour).onChange(async (value) => {
         this.plugin.settings.riverColour = value;
         await this.plugin.saveSettings();
-      })
+      }),
     );
 
     containerEl.createEl("h1", { text: "Terrain Display" });
     this.coloursEl = containerEl.createDiv();
 
     for (const [key, val] of Object.entries(this.plugin.settings.terrain).sort(
-      ([a], [b]) => a.localeCompare(b)
+      ([a], [b]) => a.localeCompare(b),
     ))
       this.addTerrainColourField(key, val);
 
@@ -57,12 +60,12 @@ export default class HexMapSettingTab extends PluginSettingTab {
             this.plugin.settings.terrain[value] = { bg: "black", fg: "white" };
             this.addTerrainColourField(
               value,
-              this.plugin.settings.terrain[value]
+              this.plugin.settings.terrain[value],
             );
             await this.plugin.saveSettings();
-          }
+          },
         ).open();
-      })
+      }),
     );
   }
 
@@ -71,7 +74,7 @@ export default class HexMapSettingTab extends PluginSettingTab {
       el.setValue(this.plugin.settings[key]).onChange(async (value) => {
         this.plugin.settings[key] = value;
         await this.plugin.saveSettings();
-      })
+      }),
     );
   }
 
@@ -82,7 +85,7 @@ export default class HexMapSettingTab extends PluginSettingTab {
         .onChange(async (value) => {
           this.plugin.settings[key] = asNumber(value, DEFAULT_SETTINGS[key]);
           await this.plugin.saveSettings();
-        })
+        }),
     );
   }
 
@@ -93,13 +96,13 @@ export default class HexMapSettingTab extends PluginSettingTab {
         el.setValue(val.bg).onChange(async (value) => {
           this.plugin.settings.terrain[key].bg = value;
           await this.plugin.saveSettings();
-        })
+        }),
       )
       .addColorPicker((el) =>
         el.setValue(val.fg).onChange(async (value) => {
           this.plugin.settings.terrain[key].fg = value;
           await this.plugin.saveSettings();
-        })
+        }),
       )
       .addDropdown((el) =>
         el
@@ -111,14 +114,14 @@ export default class HexMapSettingTab extends PluginSettingTab {
               this.plugin.settings.terrain[key].icon = value as TerrainIconName;
             else delete this.plugin.settings.terrain[key].icon;
             await this.plugin.saveSettings();
-          })
+          }),
       )
       .addExtraButton((el) =>
         el.setIcon("trash").onClick(async () => {
           setting.settingEl.remove();
           delete this.plugin.settings.terrain[key];
           await this.plugin.saveSettings();
-        })
+        }),
       );
 
     return setting;

@@ -17,6 +17,10 @@ export interface HexMapOptions {
   terrainIconSize: number;
   riverWidth: number;
   riverColour: string;
+  centre?: string;
+  maxDistance?: number;
+  maxWidth?: string;
+  maxHeight?: string;
 }
 type NumberKey = KeysMatching<HexMapOptions, number>;
 type StringKey = KeysMatching<HexMapOptions, string>;
@@ -82,7 +86,7 @@ export function getRivers(source: string, options: HexMapOptions) {
         col: Number(col),
         row: Number(row),
       })),
-    })
+    }),
   );
 }
 
@@ -93,7 +97,7 @@ export function getOverlays(source: string) {
       tag,
       fill,
       opacity: asNumber(opacity, 0.4),
-    })
+    }),
   );
 }
 
@@ -104,7 +108,7 @@ export function getBorders(source: string) {
       tag,
       colour,
       thickness: asNumber(thickness, 1),
-    })
+    }),
   );
 }
 

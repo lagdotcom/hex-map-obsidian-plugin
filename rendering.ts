@@ -58,22 +58,43 @@ export default async function renderHexMap(
   app: App,
   settings: HexMapPluginSettings,
   source: string,
-  el: HTMLElement
+  el: HTMLElement,
+  sourcePath: string,
 ) {
+  const die = (text: string) => el.createSpan({ text, cls: "error" });
+
   const options = getOptions(source, settings);
-  if (!options.key) {
-    el.createSpan({ text: "ERROR: no key=xxx given" });
-    return;
-  }
+  if (!options.key) return die("no key=xxx given");
 
   el.classList.add("hexMapContainer");
 
   const layout = new Layout(
     options.orientation === "flat" ? flat : pointy,
-    new Point(options.size, options.size)
+    new Point(options.size, options.size),
   );
   const offset = options.offset === "even" ? 1 : -1;
   const cm = new CoordManager(options.margin);
+
+  let centreHex: Hex | undefined;
+  if (options.centre) {
+    if (options.centre.toLowerCase() === "this") {
+      const sourceFile = app.vault.getFileByPath(sourcePath);
+      if (!sourceFile) return die("cannot use 'this': not in a file???");
+
+      const fm = app.metadataCache.getFileCache(sourceFile)?.frontmatter;
+      if (!fm) return die("cannot use 'this': no frontmatter");
+
+      const coords = getCoords(fm[options.key]);
+      if (!coords) return die("cannot use 'this': invalid coords");
+
+      centreHex = Hex.fromQOffsetCoordinates(offset, coords[0]);
+    } else {
+      const coords = getCoords(options.centre);
+      if (!coords) return die(`cannot parse coords: ${options.centre}`);
+
+      centreHex = Hex.fromQOffsetCoordinates(offset, coords[0]);
+    }
+  }
 
   const hexData = app.vault
     .getMarkdownFiles()
@@ -87,6 +108,14 @@ export default async function renderHexMap(
 
       return coords.map((co) => {
         const hex = Hex.fromQOffsetCoordinates(offset, co);
+
+        if (
+          isDefined(options.maxDistance) &&
+          centreHex &&
+          centreHex.distance(hex) > options.maxDistance
+        )
+          return undefined;
+
         const { x, y } = layout.toPixel(hex);
         const { col, row } = co;
         const points = layout
@@ -117,6 +146,8 @@ export default async function renderHexMap(
     cls: "hexMap",
     attr: { viewBox: cm.viewBox },
   });
+  if (isDefined(options.maxWidth)) svg.style.maxWidth = options.maxWidth;
+  if (isDefined(options.maxHeight)) svg.style.maxHeight = options.maxHeight;
 
   const gTerrain = svg.createSvg("g", { cls: "terrain" });
   const gTerrainIcons = svg.createSvg("g", { cls: "terrainIcons" });
@@ -158,7 +189,7 @@ export default async function renderHexMap(
         y,
         options.terrainIconSize,
         ts.icon,
-        ts?.fg ?? "black"
+        ts?.fg ?? "black",
       );
 
     const coord = gCoords.createSvg("text", {

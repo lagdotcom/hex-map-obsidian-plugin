@@ -13,7 +13,11 @@ export interface HexLike {
 }
 
 export default class Hex {
-  constructor(public q: number, public r: number, public s = -q - r) {}
+  constructor(
+    public q: number,
+    public r: number,
+    public s = -q - r,
+  ) {}
 
   static fromQOffsetCoordinates(offset: 1 | -1, h: OffsetCoordinates) {
     const q = h.col;
@@ -70,7 +74,7 @@ export default class Hex {
     return new Hex(
       lerp(this.q, o.q, t),
       lerp(this.r, o.r, t),
-      lerp(this.s, o.s, t)
+      lerp(this.s, o.s, t),
     );
   }
 
@@ -79,7 +83,7 @@ export default class Hex {
     const aNudge = new Hex(
       this.q + epsilon,
       this.r + epsilon,
-      this.s - epsilon2
+      this.s - epsilon2,
     );
     const bNudge = new Hex(o.q + epsilon, o.r + epsilon, o.s - epsilon2);
     const step = 1 / max(n, 1);
