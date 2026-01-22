@@ -90,7 +90,7 @@ export function getRivers(source: string, options: HexMapOptions) {
   );
 }
 
-const overlayTagPattern = /^overlay:(#\w+):(\w+)(?::([\d.]+))?$/gim;
+const overlayTagPattern = /^overlay:([^:]+):([^:]+)(?::([\d.]+))?$/gim;
 export function getOverlays(source: string) {
   return Array.from(source.matchAll(overlayTagPattern)).map(
     ([, tag, fill, opacity]) => ({
@@ -101,13 +101,25 @@ export function getOverlays(source: string) {
   );
 }
 
-const borderTagPattern = /^border:(#\w+):(\w+)(?::([\d.]+))?$/gim;
+const borderTagPattern = /^border:([^:]+):([^:]+)(?::([\d.]+))?$/gim;
 export function getBorders(source: string) {
   return Array.from(source.matchAll(borderTagPattern)).map(
     ([, tag, colour, thickness]) => ({
       tag,
       colour,
       thickness: asNumber(thickness, 1),
+    }),
+  );
+}
+
+const zoneTagPattern = /^zone:([^:]+):([^:]+):([^:]+)(?::([\d.]+))?$/gim;
+export function getZones(source: string) {
+  return Array.from(source.matchAll(zoneTagPattern)).map(
+    ([, label, tag, fill, opacity]) => ({
+      label,
+      tag,
+      fill,
+      opacity: asNumber(opacity, 0.4),
     }),
   );
 }

@@ -10,7 +10,8 @@
 .hexMap .terrainIcons,
 .hexMap .rivers,
 .hexMap .borders,
-.hexMap .overlays {
+.hexMap .overlays,
+.hexMap .zones {
   pointer-events: none;
   user-select: none;
 }
@@ -26,9 +27,18 @@
   text-anchor: middle;
 }
 
-.hexMap .icons text {
+.hexMap .icons text,
+.hexMap .zones text {
   alignment-baseline: middle;
   text-anchor: middle;
+}
+
+.hexMap .zones text {
+  font-size: 12px;
+  text-shadow: 0 0 4px black;
+}
+.hexMap .zones polygon {
+  stroke-dasharray: 2;
 }
 
 .hexMap .rivers polyline {
@@ -38,4 +48,27 @@
 
 .hexMap .borders polygon {
   fill: none;
+}
+
+.panel {
+  position: sticky;
+  border: 2px solid #ccc;
+  padding: 4px;
+  background-color: #444;
+}
+.panel .heading {
+  font-weight: bold;
+}
+.panel .list {
+  font-size: 0.8em;
+  display: flex;
+  flex-direction: row;
+  column-gap: 8px;
+}
+.panel label {
+  display: flex;
+  align-items: center;
+}
+.panel label input {
+  order: 0;
 }
