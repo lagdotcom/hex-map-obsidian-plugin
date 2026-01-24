@@ -1,6 +1,6 @@
 import Hex from "hex/Hex";
 import Layout from "hex/Layout";
-import { jarvisMarch } from "hex/maths";
+import { edgeWalk } from "hex/maths";
 import { flat, pointy } from "hex/Orientation";
 import Point from "hex/Point";
 import { addTerrainIcon } from "icons";
@@ -125,6 +125,7 @@ class Zone {
   cm: CoordManager;
   g: SVGGElement;
   gHexes: SVGGElement;
+  hexen: Set<Hex>;
   points: Point[];
 
   constructor(
@@ -138,11 +139,13 @@ class Zone {
     this.g.dataset["tag"] = tag;
     this.gHexes = this.g.createSvg("g", { attr: { opacity } });
     this.cm = new CoordManager(0);
+    this.hexen = new Set();
     this.points = [];
   }
 
-  add(point: Point) {
+  add(hex: Hex, point: Point) {
     this.cm.hexConverter(point);
+    this.hexen.add(hex);
     this.points.push(point);
   }
 
@@ -245,6 +248,7 @@ export default async function renderHexMap(
         const points = corners.map(cm.hexConverter).join(" ");
 
         return {
+          hex,
           x,
           y,
           col,
@@ -272,14 +276,14 @@ export default async function renderHexMap(
   if (isDefined(options.maxHeight)) svg.style.maxHeight = options.maxHeight;
 
   // set up for zone labels
-  const defs = svg.createSvg("defs");
-  const filter = defs.createSvg("filter", {
-    attr: { x: -0.05, y: -0.1, width: 1.1, height: 1.2, id: "solid" },
-  });
-  filter.createSvg("feFlood", { attr: { "flood-color": "#00000040" } });
-  filter.createSvg("feComposite", {
-    attr: { in: "SourceGraphic", operator: "xor" },
-  });
+  // const defs = svg.createSvg("defs");
+  // const filter = defs.createSvg("filter", {
+  //   attr: { x: -0.05, y: -0.1, width: 1.1, height: 1.2, id: "hexMapSolid" },
+  // });
+  // filter.createSvg("feFlood", { attr: { "flood-color": "#00000040" } });
+  // filter.createSvg("feComposite", {
+  //   attr: { in: "SourceGraphic", operator: "xor" },
+  // });
 
   const panel = el.createDiv({ cls: "panel" });
 
@@ -304,6 +308,7 @@ export default async function renderHexMap(
   );
 
   for (const {
+    hex,
     x,
     y,
     col,
@@ -362,7 +367,7 @@ export default async function renderHexMap(
     for (const z of zones)
       if (z.tag && tags.includes(z.tag)) {
         // z.gHexes.createSvg("polygon", { attr: { points } });
-        for (const corner of corners) z.add(corner);
+        for (const corner of corners) z.add(hex, corner);
       }
   }
 
@@ -397,16 +402,17 @@ export default async function renderHexMap(
       const [x, y] = z.getCentrePoint();
       if (x === "NaN") continue;
 
-      // TODO use a more hex-specific algorithm?
-      const points = jarvisMarch(z.points)
-        .map((p) => p.toString())
-        .join(" ");
-      z.g.createSvg("polygon", {
-        attr: { points, stroke: z.fill, "fill-opacity": z.opacity },
-      });
-      const text = z.g.createSvg("text", {
-        attr: { x, y, fill: z.fill, filter: "url(#solid)" },
-      });
+      const borders = edgeWalk(layout, z.hexen);
+      for (const corners of borders)
+        z.g.createSvg("polygon", {
+          attr: {
+            points: corners.map((p) => p.toString()).join(" "),
+            stroke: z.fill,
+            "fill-opacity": z.opacity,
+          },
+        });
+
+      const text = z.g.createSvg("text", { attr: { x, y, fill: z.fill } });
       text.textContent = z.label;
       z.addToPanel(items);
     }

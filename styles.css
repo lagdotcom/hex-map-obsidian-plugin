@@ -39,6 +39,7 @@
 }
 .hexMap .zones polygon {
   stroke-dasharray: 2;
+  stroke-width: 2px;
 }
 
 .hexMap .rivers polyline {
