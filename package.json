@@ -1,6 +1,6 @@
 {
   "name": "hex-map-obsidian-plugin",
-  "version": "1.6.1",
+  "version": "1.6.2",
   "description": "Obsidian plugin to display hex maps",
   "main": "main.js",
   "scripts": {
@@ -16,17 +16,19 @@
   "devDependencies": {
     "@codemirror/state": "6.5.0",
     "@codemirror/view": "6.38.6",
-    "@types/node": "^25.0.9",
+    "@types/node": "^25.0.10",
     "@typescript-eslint/eslint-plugin": "^8.53.1",
     "@typescript-eslint/parser": "^8.53.1",
     "builtin-modules": "5.0.0",
+    "dotenv": "^17.2.3",
     "esbuild": "^0.27.2",
     "eslint": "^9.39.2",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "obsidian": "^1.11.4",
-    "prettier": "^3.8.0",
+    "prettier": "^3.8.1",
+    "svgo": "^4.0.0",
     "tslib": "2.8.1",
     "typescript": "5.9.3",
     "typescript-eslint": "^8.43.1"

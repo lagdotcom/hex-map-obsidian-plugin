@@ -50,9 +50,9 @@ export const DEFAULT_SETTINGS: HexMapPluginSettings = {
   riverWidth: 5,
   riverColour: "#8cb2d8",
   terrain: {
-    Badlands: ts("#cd9b00", "#545556"),
-    Barren: ts("#ffcc67", "#545556"),
-    Beach: ts("#fff899", "white"),
+    Badlands: ts("#cd9b00", "#545556", "broken"),
+    Barren: ts("#ffcc67", "#545556", "broken"),
+    Beach: ts("#fff899", "white", "dots"),
     "Cultivated Farmland": ts("#9fd66b", "#aea002", "farm"),
     "Dense Forest": ts("#93c663", "#538000", "forestDense"),
     "Dense Mixed Forest": ts("#4f893a", "#315801", "forestDenseMixed"),

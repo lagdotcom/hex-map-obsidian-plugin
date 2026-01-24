@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <style>
+    .line {
+      stroke: currentColor;
+      stroke-width: 5;
+      fill: none;
+    }
+  </style>
+  <path class="line" d="M70,85 v-30 a25 25 360 1 1 0.1,0"></path>
+  <path class="line" d="M35,75 m-15,9 l-15,-12"></path>
+  <path class="line" d="M35,75 m-9,2 l-11,-17"></path>
+  <path class="line" d="M35,75 l0,-22"></path>
+  <path class="line" d="M35,75 m9,2 l11,-17"></path>
+  <path class="line" d="M35,75 m15,9 l15,-12"></path>
+</svg>

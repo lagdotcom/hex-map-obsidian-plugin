@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <style>
+    .line {
+      stroke: currentColor;
+      stroke-width: 5;
+      fill: none;
+    }
+  </style>
+  <path class="line" d="M20,10 l30,10 m-33,-2 l30,10 m-33,-2 l30,10 m-33,-2 l30,10"></path>
+  <path class="line" d="M55,55 l30,10 m-33,-2 l30,10 m-33,-2 l30,10 m-33,-2 l30,10"></path>
+</svg>
