@@ -421,6 +421,7 @@ export default async function renderHexMap(
       makeDisplayToggle({
         parent: section,
         g: gZones,
+        items,
         text: "Zones",
         prepend: true,
       }).classList.add("heading");
