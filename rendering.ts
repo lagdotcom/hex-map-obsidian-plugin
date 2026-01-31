@@ -15,7 +15,6 @@ import {
   getZones,
 } from "parsing";
 import { HexMapPluginSettings } from "settings";
-import Soon from "Soon";
 import { isDefined } from "tools";
 
 class CoordManager {
@@ -47,12 +46,11 @@ class CoordManager {
     return `${this.viewLeft} ${this.viewTop} ${this.viewWidth} ${this.viewHeight}`;
   }
 
-  hexConverter = (p: Point) => {
+  addToBounds = (p: Point) => {
     this.left = Math.min(this.left, p.x);
     this.right = Math.max(this.right, p.x);
     this.top = Math.min(this.top, p.y);
     this.bot = Math.max(this.bot, p.y);
-    return p.toString();
   };
 }
 
@@ -144,7 +142,7 @@ class Zone {
   }
 
   add(hex: Hex, point: Point) {
-    this.cm.hexConverter(point);
+    this.cm.addToBounds(point);
     this.hexen.add(hex);
     this.points.push(point);
   }
@@ -178,6 +176,10 @@ function addPanelSection<T extends { addToPanel(el: HTMLElement): void }>(
       text: label,
       prepend: true,
     }).classList.add("heading");
+}
+
+function toPointsString(p: Point[]) {
+  return p.map((p) => p.toString()).join(" ");
 }
 
 export default async function renderHexMap(
@@ -245,7 +247,7 @@ export default async function renderHexMap(
         const { x, y } = layout.toPixel(hex);
         const { col, row } = co;
         const corners = layout.getPolygonCorners(hex);
-        const points = corners.map(cm.hexConverter).join(" ");
+        for (const corner of corners) cm.addToBounds(corner);
 
         return {
           hex,
@@ -254,7 +256,7 @@ export default async function renderHexMap(
           col,
           row,
           corners,
-          points,
+          points: toPointsString(corners),
           name: file.basename,
           path: file.path,
           terrain: fm[options.terrainKey],
@@ -264,9 +266,6 @@ export default async function renderHexMap(
       });
     })
     .filter(isDefined);
-
-  let ignoreClick = false;
-  const ignoreReset = new Soon(() => (ignoreClick = false));
 
   const svg = hmc.createSvg("svg", {
     cls: "hexMap",
@@ -290,11 +289,11 @@ export default async function renderHexMap(
   const gTerrain = svg.createSvg("g", { cls: "terrain" });
   const gTerrainIcons = svg.createSvg("g", { cls: "terrainIcons" });
   const gRivers = svg.createSvg("g", { cls: "rivers" });
-  const gCoords = svg.createSvg("g", { cls: "coords" });
   const gIcons = svg.createSvg("g", { cls: "icons" });
   const gBorders = svg.createSvg("g", { cls: "borders" });
   const gOverlays = svg.createSvg("g", { cls: "overlays" });
   const gZones = svg.createSvg("g", { cls: "zones" });
+  const gCoords = svg.createSvg("g", { cls: "coords" });
 
   const borders = getBorders(source).map(
     (b) => new Border(gBorders, b.tag, b.colour, b.thickness),
@@ -325,10 +324,12 @@ export default async function renderHexMap(
     if (!ts) console.warn("missing data for " + terrain);
 
     const polygon = gTerrain.createSvg("polygon", {
-      attr: { points, fill: ts?.bg ?? "#222222" },
-    });
-    polygon.addEventListener("pointerup", () => {
-      if (!ignoreClick) this.app.workspace.openLinkText(name, path);
+      attr: {
+        points,
+        fill: ts?.bg ?? "#222222",
+        "data-name": name,
+        "data-path": path,
+      },
     });
 
     const title = polygon.createSvg("title");
@@ -357,8 +358,10 @@ export default async function renderHexMap(
     }
 
     for (const b of borders)
-      if (b.tag && tags.includes(b.tag))
-        b.g.createSvg("polygon", { attr: { points } });
+      if (b.tag && tags.includes(b.tag)) {
+        const inner = layout.getPolygonCorners(hex, b.thickness);
+        b.g.createSvg("polygon", { attr: { points: toPointsString(inner) } });
+      }
 
     for (const o of overlays)
       if (o.tag && tags.includes(o.tag))
@@ -376,10 +379,11 @@ export default async function renderHexMap(
       attr: {
         stroke: options.riverColour,
         "stroke-width": width,
-        points: coords
-          .map((co) => layout.toPixel(Hex.fromQOffsetCoordinates(offset, co)))
-          .map((p) => p.toString())
-          .join(" "),
+        points: toPointsString(
+          coords.map((co) =>
+            layout.toPixel(Hex.fromQOffsetCoordinates(offset, co)),
+          ),
+        ),
       },
     });
 
@@ -406,7 +410,7 @@ export default async function renderHexMap(
       for (const corners of borders)
         z.g.createSvg("polygon", {
           attr: {
-            points: corners.map((p) => p.toString()).join(" "),
+            points: toPointsString(corners),
             stroke: z.fill,
             "fill-opacity": z.opacity,
           },
@@ -432,16 +436,14 @@ export default async function renderHexMap(
   const pz = createPanZoom(svg, {
     minZoom: 0.5,
     maxZoom: 3,
-    beforeWheel: () => ignoreReset.schedule(),
+    onClick: (e) => {
+      if (e.target instanceof HTMLElement || e.target instanceof SVGElement) {
+        const name = e.target.dataset["name"];
+        const path = e.target.dataset["path"];
+        if (name && path) this.app.workspace.openLinkText(name, path);
+      }
+    },
   });
-  pz.on("panstart", () => {
-    el.classList.add("panning");
-    ignoreClick = true;
-  });
-  pz.on("panend", () => {
-    el.classList.remove("panning");
-    ignoreReset.schedule();
-  });
-  pz.on("zoom", () => (ignoreClick = true));
-  pz.on("zoomend", () => ignoreReset.schedule());
+  pz.on("panstart", () => hmc.classList.add("panning"));
+  pz.on("panend", () => hmc.classList.remove("panning"));
 }

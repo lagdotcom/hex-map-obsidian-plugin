@@ -1,6 +1,6 @@
 {
   "name": "hex-map-obsidian-plugin",
-  "version": "1.6.2",
+  "version": "1.6.3",
   "description": "Obsidian plugin to display hex maps",
   "main": "main.js",
   "scripts": {

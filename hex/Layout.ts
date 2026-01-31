@@ -31,25 +31,28 @@ export default class Layout {
     return this.toHex(p).round();
   }
 
-  getCornerOffset(corner: 0 | 1 | 2 | 3 | 4 | 5) {
+  getCornerOffset(corner: 0 | 1 | 2 | 3 | 4 | 5, inset = 0) {
     const { orientation, size } = this;
     const angle = (π2 * (orientation.startAngle + corner)) / 6;
-    return new Point(size.x * cos(angle), size.y * sin(angle));
+    return new Point(
+      (size.x - inset) * cos(angle),
+      (size.y - inset) * sin(angle),
+    );
   }
 
-  getCornerOffsets() {
+  getCornerOffsets(inset?: number) {
     return [
-      this.getCornerOffset(0),
-      this.getCornerOffset(1),
-      this.getCornerOffset(2),
-      this.getCornerOffset(3),
-      this.getCornerOffset(4),
-      this.getCornerOffset(5),
+      this.getCornerOffset(0, inset),
+      this.getCornerOffset(1, inset),
+      this.getCornerOffset(2, inset),
+      this.getCornerOffset(3, inset),
+      this.getCornerOffset(4, inset),
+      this.getCornerOffset(5, inset),
     ];
   }
 
-  getPolygonCorners(h: HexLike) {
+  getPolygonCorners(h: HexLike, inset?: number) {
     const centre = this.toPixel(h);
-    return this.getCornerOffsets().map((o) => centre.add(o));
+    return this.getCornerOffsets(inset).map((o) => centre.add(o));
   }
 }
