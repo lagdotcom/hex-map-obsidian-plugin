@@ -249,6 +249,10 @@ export default async function renderHexMap(
         const corners = layout.getPolygonCorners(hex);
         for (const corner of corners) cm.addToBounds(corner);
 
+        const tags = ((fm.tags ?? []) as string[])
+          .map((tag) => `#${tag}`)
+          .concat((cached.tags ?? []).map((t) => t.tag));
+
         return {
           hex,
           x,
@@ -261,7 +265,7 @@ export default async function renderHexMap(
           path: file.path,
           terrain: fm[options.terrainKey],
           icon: fm[options.iconKey],
-          tags: cached.tags?.map((t) => t.tag) ?? [],
+          tags,
         };
       });
     })

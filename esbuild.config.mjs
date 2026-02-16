@@ -17,8 +17,8 @@ const prod = process.argv.includes("production");
 const sync = process.argv.includes("sync");
 
 /** @type import('esbuild').Plugin */
-let syncOsePlugin = {
-  name: "sync-ose-plugin",
+let syncPlugin = {
+  name: "sync-plugin",
   setup(build) {
     if (!process.env.SYNC_DESTINATION)
       throw Error("process.env.SYNC_DESTINATION not set");
@@ -92,7 +92,7 @@ const context = await esbuild.context({
   treeShaking: true,
   outfile: "main.js",
   minify: prod,
-  plugins: [svgProcessPlugin].concat(sync ? [syncOsePlugin] : []),
+  plugins: [svgProcessPlugin].concat(sync ? [syncPlugin] : []),
 });
 
 if (prod) {
