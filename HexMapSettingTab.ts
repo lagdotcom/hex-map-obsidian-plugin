@@ -11,8 +11,6 @@ import TextModal from "TextModal";
 import { asNumber } from "tools";
 
 export default class HexMapSettingTab extends PluginSettingTab {
-  coloursEl: HTMLDivElement;
-
   constructor(
     app: App,
     public plugin: HexMapPlugin,
@@ -43,12 +41,12 @@ export default class HexMapSettingTab extends PluginSettingTab {
     );
 
     containerEl.createEl("h1", { text: "Terrain Display" });
-    this.coloursEl = containerEl.createDiv();
+    const coloursEl = containerEl.createDiv();
 
     for (const [key, val] of Object.entries(this.plugin.settings.terrain).sort(
       ([a], [b]) => a.localeCompare(b),
     ))
-      this.addTerrainColourField(key, val);
+      this.addTerrainColourField(coloursEl, key, val);
 
     new Setting(containerEl).addButton((el) =>
       el.setButtonText("Add").onClick(() => {
@@ -59,6 +57,7 @@ export default class HexMapSettingTab extends PluginSettingTab {
           async (value) => {
             this.plugin.settings.terrain[value] = { bg: "black", fg: "white" };
             this.addTerrainColourField(
+              coloursEl,
               value,
               this.plugin.settings.terrain[value],
             );
@@ -89,8 +88,12 @@ export default class HexMapSettingTab extends PluginSettingTab {
     );
   }
 
-  addTerrainColourField(key: string, val: TerrainSettings) {
-    const setting = new Setting(this.coloursEl)
+  addTerrainColourField(
+    coloursEl: HTMLDivElement,
+    key: string,
+    val: TerrainSettings,
+  ) {
+    const setting = new Setting(coloursEl)
       .setName(key)
       .addColorPicker((el) =>
         el.setValue(val.bg).onChange(async (value) => {

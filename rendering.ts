@@ -4,7 +4,7 @@ import { edgeWalk } from "hex/maths";
 import { flat, pointy } from "hex/Orientation";
 import Point from "hex/Point";
 import { addTerrainIcon } from "icons";
-import { App } from "obsidian";
+import { App, type TFile } from "obsidian";
 import createPanZoom from "panzoom";
 import {
   getBorders,
@@ -13,6 +13,7 @@ import {
   getOverlays,
   getRivers,
   getZones,
+  type HexMapOptions,
 } from "parsing";
 import { HexMapPluginSettings } from "settings";
 import { isDefined } from "tools";
@@ -182,6 +183,190 @@ function toPointsString(p: Point[]) {
   return p.map((p) => p.toString()).join(" ");
 }
 
+interface HexInfo {
+  hex: Hex;
+  x: number;
+  y: number;
+  col: number;
+  row: number;
+  corners: Point[];
+  points: string;
+  name: string;
+  path: string;
+  terrain: string;
+  icon: string;
+  tags: string[];
+}
+
+function getHexDataFromVault({
+  app,
+  options,
+  offset,
+  layout,
+  cm,
+  centreHex,
+}: {
+  app: App;
+  options: HexMapOptions;
+  offset: 1 | -1;
+  layout: Layout;
+  cm: CoordManager;
+  centreHex?: Hex;
+}): HexInfo[] {
+  const usedCoords = new Map<string, string>();
+
+  return app.vault
+    .getMarkdownFiles()
+    .flatMap((file) => {
+      const cached = app.metadataCache.getFileCache(file);
+      const fm = cached?.frontmatter;
+      if (!fm) return;
+
+      const coords = getCoords(fm[options.key]);
+      if (!coords) return;
+
+      return coords.map((co) => {
+        const hex = Hex.fromQOffsetCoordinates(offset, co);
+
+        if (
+          isDefined(options.maxDistance) &&
+          centreHex &&
+          centreHex.distance(hex) > options.maxDistance
+        )
+          return undefined;
+
+        const { x, y } = layout.toPixel(hex);
+        const { col, row } = co;
+        const corners = layout.getPolygonCorners(hex);
+        for (const corner of corners) cm.addToBounds(corner);
+
+        const tags = ((fm.tags ?? []) as string[])
+          .map((tag) => `#${tag}`)
+          .concat((cached.tags ?? []).map((t) => t.tag));
+
+        const coord = `${col}.${row}`;
+        const prev = usedCoords.get(coord);
+        if (prev) {
+          console.warn(`${coord} used by ${prev}, skipping ${file.basename}`);
+          return;
+        }
+        usedCoords.set(coord, file.basename);
+
+        return {
+          hex,
+          x,
+          y,
+          col,
+          row,
+          corners,
+          points: toPointsString(corners),
+          name: file.basename,
+          path: file.path,
+          terrain: fm[options.terrainKey],
+          icon: fm[options.iconKey],
+          tags,
+        };
+      });
+    })
+    .filter(isDefined);
+}
+
+declare global {
+  interface DataViewTable<T> {
+    type: "table";
+    headers: string[];
+    values: T[];
+  }
+
+  interface DataViewPluginAPI {
+    query<T>(query: string): Promise<{ value: DataViewTable<T> }>;
+  }
+
+  interface Window {
+    DataviewAPI: DataViewPluginAPI;
+  }
+}
+
+async function getHexDataFromDataView({
+  options,
+  offset,
+  layout,
+  cm,
+  centreHex,
+}: {
+  options: HexMapOptions;
+  offset: 1 | -1;
+  layout: Layout;
+  cm: CoordManager;
+  centreHex?: Hex;
+}): Promise<HexInfo[]> {
+  const usedCoords = new Map<string, string>();
+
+  return (
+    await window.DataviewAPI.query<
+      [
+        file: TFile,
+        coords: string[],
+        tags: string[] | null,
+        etags: string[] | null,
+        terrain: string | null,
+        icon: string | null,
+      ]
+    >(
+      `TABLE ${options.key}, tags, file.etags, terrain, icon WHERE ${options.key}`,
+    )
+  ).value.values
+    .flatMap(
+      ([file, coordsField, tagsField, fileTags, terrainField, iconField]) => {
+        const coords = getCoords(coordsField);
+        if (!coords) return;
+
+        return coords.map((co) => {
+          const hex = Hex.fromQOffsetCoordinates(offset, co);
+
+          if (
+            isDefined(options.maxDistance) &&
+            centreHex &&
+            centreHex.distance(hex) > options.maxDistance
+          )
+            return undefined;
+
+          const { x, y } = layout.toPixel(hex);
+          const { col, row } = co;
+          const corners = layout.getPolygonCorners(hex);
+          for (const corner of corners) cm.addToBounds(corner);
+
+          const tags = ((tagsField ?? []) as string[])
+            .map((tag) => `#${tag}`)
+            .concat(fileTags ?? []);
+          const coord = `${col}.${row}`;
+          const prev = usedCoords.get(coord);
+          if (prev) {
+            console.warn(`${coord} used by ${prev}, skipping ${file.basename}`);
+            return;
+          }
+          usedCoords.set(coord, file.basename);
+
+          return {
+            hex,
+            x,
+            y,
+            col,
+            row,
+            corners,
+            points: toPointsString(corners),
+            name: file.basename,
+            path: file.path,
+            terrain: terrainField ?? "UNKNOWN",
+            icon: iconField ?? "",
+            tags,
+          };
+        });
+      },
+    )
+    .filter(isDefined);
+}
+
 export default async function renderHexMap(
   app: App,
   settings: HexMapPluginSettings,
@@ -189,6 +374,8 @@ export default async function renderHexMap(
   el: HTMLElement,
   sourcePath: string,
 ) {
+  const start = performance.now();
+
   const die = (text: string) => el.createSpan({ text, cls: "error" });
 
   const options = getOptions(source, settings);
@@ -224,52 +411,16 @@ export default async function renderHexMap(
     }
   }
 
-  const hexData = app.vault
-    .getMarkdownFiles()
-    .flatMap((file) => {
-      const cached = app.metadataCache.getFileCache(file);
-      const fm = cached?.frontmatter;
-      if (!fm) return;
-
-      const coords = getCoords(fm[options.key]);
-      if (!coords) return;
-
-      return coords.map((co) => {
-        const hex = Hex.fromQOffsetCoordinates(offset, co);
-
-        if (
-          isDefined(options.maxDistance) &&
-          centreHex &&
-          centreHex.distance(hex) > options.maxDistance
-        )
-          return undefined;
-
-        const { x, y } = layout.toPixel(hex);
-        const { col, row } = co;
-        const corners = layout.getPolygonCorners(hex);
-        for (const corner of corners) cm.addToBounds(corner);
-
-        const tags = ((fm.tags ?? []) as string[])
-          .map((tag) => `#${tag}`)
-          .concat((cached.tags ?? []).map((t) => t.tag));
-
-        return {
-          hex,
-          x,
-          y,
-          col,
-          row,
-          corners,
-          points: toPointsString(corners),
-          name: file.basename,
-          path: file.path,
-          terrain: fm[options.terrainKey],
-          icon: fm[options.iconKey],
-          tags,
-        };
-      });
-    })
-    .filter(isDefined);
+  const hexData =
+    "DataviewAPI" in window && settings.useDataView
+      ? await getHexDataFromDataView({
+          centreHex,
+          cm,
+          layout,
+          offset,
+          options,
+        })
+      : getHexDataFromVault({ app, centreHex, cm, layout, offset, options });
 
   const svg = hmc.createSvg("svg", {
     cls: "hexMap",
@@ -444,10 +595,13 @@ export default async function renderHexMap(
       if (e.target instanceof HTMLElement || e.target instanceof SVGElement) {
         const name = e.target.dataset["name"];
         const path = e.target.dataset["path"];
-        if (name && path) this.app.workspace.openLinkText(name, path);
+        if (name && path) app.workspace.openLinkText(name, path);
       }
     },
   });
   pz.on("panstart", () => hmc.classList.add("panning"));
   pz.on("panend", () => hmc.classList.remove("panning"));
+
+  const end = performance.now();
+  console.log(`Hex map render took ${end - start}ms`, { options });
 }

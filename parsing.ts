@@ -21,6 +21,7 @@ export interface HexMapOptions {
   maxDistance?: number;
   maxWidth?: string;
   maxHeight?: string;
+  useDataView: boolean;
 }
 type NumberKey = KeysMatching<HexMapOptions, number>;
 type StringKey = KeysMatching<HexMapOptions, string>;
@@ -50,6 +51,7 @@ export function getOptions(source: string, settings: HexMapPluginSettings) {
     terrainIconSize,
     riverWidth,
     riverColour,
+    useDataView,
   } = settings;
   const options: HexMapOptions = {
     key: "",
@@ -65,6 +67,7 @@ export function getOptions(source: string, settings: HexMapPluginSettings) {
     terrainIconSize,
     riverWidth,
     riverColour,
+    useDataView,
   };
 
   for (const [, key, value] of source.matchAll(keyValuePattern)) {

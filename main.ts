@@ -4,7 +4,7 @@ import renderHexMap from "rendering";
 import { DEFAULT_SETTINGS, HexMapPluginSettings } from "settings";
 
 export default class HexMapPlugin extends Plugin {
-  settings: HexMapPluginSettings;
+  settings!: HexMapPluginSettings;
 
   async onload() {
     await this.loadSettings();

@@ -8,6 +8,7 @@ import forestDenseMixed from "./icons/forestDenseMixed.svg";
 import forestEvergreen from "./icons/forestEvergreen.svg";
 import forestFen from "./icons/forestFen.svg";
 import forestMixed from "./icons/forestMixed.svg";
+import grass from "./icons/grass.svg";
 import hill from "./icons/hill.svg";
 import mountain from "./icons/mountain.svg";
 import volcanoExtinct from "./icons/volcanoExtinct.svg";
@@ -23,6 +24,7 @@ const iconLibrary = {
   forestEvergreen,
   forestFen,
   forestMixed,
+  grass,
   hill,
   mountain,
   volcanoExtinct,

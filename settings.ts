@@ -31,6 +31,7 @@ export interface HexMapPluginSettings {
   terrain: Record<string, TerrainSettings>;
   riverWidth: number;
   riverColour: string;
+  useDataView: boolean;
 }
 
 export type StringKey = KeysMatching<HexMapPluginSettings, string>;
@@ -49,6 +50,7 @@ export const DEFAULT_SETTINGS: HexMapPluginSettings = {
   terrainIconSize: 12,
   riverWidth: 5,
   riverColour: "#8cb2d8",
+  useDataView: false,
   terrain: {
     Badlands: ts("#cd9b00", "#545556", "broken"),
     Barren: ts("#ffcc67", "#545556", "broken"),
@@ -63,13 +65,14 @@ export const DEFAULT_SETTINGS: HexMapPluginSettings = {
     "Forest Hills": ts("#8ebc51", "#426600", "hill"),
     Forest: ts("#93c663", "#538000", "forest"),
     "Forest Wetlands": ts("#879154", "#016225", "forestFen"),
-    Grasslands: ts("#e5f29b", "#648a37"),
+    Grasslands: ts("#e5f29b", "#648a37", "grass"),
     "Grassland Hills": ts("#d8f296", "#5e8c1c", "hill"),
     "Grassy Hills": ts("#d8d163", "#3e6a0a", "hill"),
     Hills: ts("#e8ce59", "#826f0c", "hill"),
     Marsh: ts("#84ce93", "#49836c", "fen"),
     "Mixed Forest": ts("#4f9e44", "#2e5401", "forestMixed"),
     Mountain: ts("#b27f00", "#424826", "mountain"),
+    Shrubland: ts("#d8db7f", "#638a36", "grass"),
     Water: ts("#8cb2d8", "black"),
   },
 };
