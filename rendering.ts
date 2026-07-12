@@ -271,6 +271,77 @@ function getHexDataFromVault({
     .filter(isDefined);
 }
 
+interface RiverNode {
+  hex: Hex;
+  thickness: number;
+}
+
+interface RiverInfo {
+  name: string;
+  path: string;
+  nodes: RiverNode[];
+}
+
+function getRiverDataFromVault({
+  app,
+  offset,
+  options,
+}: {
+  app: App;
+  offset: 1 | -1;
+  options: HexMapOptions;
+}): RiverInfo[] {
+  const key = options.key + ".river";
+
+  return app.vault
+    .getMarkdownFiles()
+    .map((file) => {
+      const cached = app.metadataCache.getFileCache(file);
+      const fm = cached?.frontmatter;
+      if (!fm) return;
+
+      const course = fm[key];
+      if (!course) return;
+
+      let thickness = 3;
+      const nodes: RiverNode[] = [];
+      for (const item of course as string[]) {
+        if (item.startsWith("T")) {
+          thickness = parseInt(item.slice(1));
+          continue;
+        } else if (item.startsWith("[[")) {
+          const other = app.metadataCache.getFirstLinkpathDest(
+            item.slice(2, -2),
+            file.path,
+          );
+          if (other) {
+            const otherFm = app.metadataCache.getFileCache(other)?.frontmatter;
+            if (otherFm) {
+              const coords = getCoords(otherFm[options.key]);
+              if (coords) {
+                const hex = Hex.fromQOffsetCoordinates(offset, coords[0]);
+                nodes.push({ hex, thickness });
+                continue;
+              }
+            }
+          }
+        } else {
+          const coords = getCoords(item);
+          if (coords && coords.length === 1) {
+            const hex = Hex.fromQOffsetCoordinates(offset, coords[0]);
+            nodes.push({ hex, thickness });
+            continue;
+          }
+        }
+
+        console.warn(`unknown river course item: ${item}`);
+      }
+
+      return { name: file.basename, path: file.path, nodes };
+    })
+    .filter(isDefined);
+}
+
 declare global {
   interface DataViewTable<T> {
     type: "table";
@@ -422,6 +493,8 @@ export default async function renderHexMap(
         })
       : getHexDataFromVault({ app, centreHex, cm, layout, offset, options });
 
+  const riverData = getRiverDataFromVault({ app, offset, options });
+
   const svg = hmc.createSvg("svg", {
     cls: "hexMap",
     attr: { viewBox: cm.viewBox },
@@ -529,23 +602,43 @@ export default async function renderHexMap(
       }
   }
 
-  for (const { width, coords } of rivers)
+  const addRiverSegment = (thickness: number, points: Hex[]) =>
     gRivers.createSvg("polyline", {
       attr: {
         stroke: options.riverColour,
-        "stroke-width": width,
-        points: toPointsString(
-          coords.map((co) =>
-            layout.toPixel(Hex.fromQOffsetCoordinates(offset, co)),
-          ),
-        ),
+        "stroke-width": thickness,
+        points: toPointsString(points.map((h) => layout.toPixel(h))),
       },
     });
+
+  for (const { width, coords } of rivers)
+    addRiverSegment(
+      width,
+      coords.map((co) => Hex.fromQOffsetCoordinates(offset, co)),
+    );
+
+  for (const river of riverData) {
+    const accumulator: Hex[] = [];
+    let thickness = river.nodes[0].thickness;
+
+    for (const node of river.nodes) {
+      if (node.thickness !== thickness) {
+        if (accumulator.length > 1) addRiverSegment(thickness, accumulator);
+        accumulator.splice(0, accumulator.length - 1);
+        accumulator.push(node.hex);
+        thickness = node.thickness;
+      } else {
+        accumulator.push(node.hex);
+      }
+    }
+
+    if (accumulator.length > 1) addRiverSegment(thickness, accumulator);
+  }
 
   addPanelSection(panel, gBorders, borders, "Borders");
   addPanelSection(panel, gOverlays, overlays, "Overlays");
 
-  if (rivers.length) {
+  if (rivers.length || riverData.length) {
     const panelRivers = panel.createEl("section");
     makeDisplayToggle({
       parent: panelRivers,
