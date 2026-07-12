@@ -61,22 +61,33 @@ function makeDisplayToggle({
   items,
   text,
   prepend,
+  value,
 }: {
   parent: HTMLElement;
   g: SVGElement;
   items?: HTMLElement;
   text: string;
   prepend?: boolean;
+  value?: boolean;
 }) {
   const label = parent.createEl("label", { prepend });
   const input = label.createEl("input", {
     attr: { type: "checkbox", checked: true },
   });
-  input.addEventListener("change", () => {
+
+  const onChange = () => {
     g.style.display = input.checked ? "" : "none";
     if (items) items.style.display = input.checked ? "" : "none";
-  });
+  };
+
+  input.addEventListener("change", onChange);
   label.createEl("span", { text });
+
+  if (value === false) {
+    input.checked = false;
+    onChange();
+  }
+
   return label;
 }
 
@@ -117,6 +128,40 @@ class Overlay {
   addToPanel(panel: HTMLElement) {
     if (this.g.childElementCount)
       makeDisplayToggle({ parent: panel, g: this.g, text: this.tag });
+  }
+}
+
+class Region {
+  cm: CoordManager;
+  g: SVGGElement;
+  hexen: Set<Hex>;
+  points: Point[];
+
+  constructor(
+    public parent: SVGGElement,
+    public name: string,
+  ) {
+    this.cm = new CoordManager(0);
+    this.g = parent.createSvg("g", { attr: {} });
+    this.hexen = new Set();
+    this.points = [];
+  }
+
+  add(hex: Hex, point: Point) {
+    this.cm.addToBounds(point);
+    this.hexen.add(hex);
+    this.points.push(point);
+  }
+
+  addToPanel(panel: HTMLElement) {
+    if (this.g.childElementCount)
+      makeDisplayToggle({ parent: panel, g: this.g, text: this.name });
+  }
+
+  getCentrePoint() {
+    const cx = (this.cm.left + this.cm.right) / 2;
+    const cy = (this.cm.bot + this.cm.top) / 2;
+    return [cx.toString(), cy.toString()];
   }
 }
 
@@ -196,6 +241,28 @@ interface HexInfo {
   terrain: string;
   icon: string;
   tags: string[];
+  regions: string[];
+}
+
+function getRegionName(app: App, path: string, name: string) {
+  if (name.startsWith("[[")) {
+    const other = app.metadataCache.getFirstLinkpathDest(
+      name.slice(2, -2),
+      path,
+    );
+    if (other) return other.basename;
+
+    return name.slice(2, -2);
+  }
+
+  return name;
+}
+
+function getRegionNames(app: App, path: string, names?: string | string[]) {
+  if (!names) return [];
+  if (!Array.isArray(names)) names = [names];
+
+  return names.map((name) => getRegionName(app, path, name));
 }
 
 function getHexDataFromVault({
@@ -265,6 +332,7 @@ function getHexDataFromVault({
           terrain: fm[options.terrainKey],
           icon: fm[options.iconKey],
           tags,
+          regions: getRegionNames(app, file.path, fm[options.regionKey]),
         };
       });
     })
@@ -431,6 +499,7 @@ async function getHexDataFromDataView({
             terrain: terrainField ?? "UNKNOWN",
             icon: iconField ?? "",
             tags,
+            regions: [], // TODO
           };
         });
       },
@@ -522,6 +591,7 @@ export default async function renderHexMap(
   const gOverlays = svg.createSvg("g", { cls: "overlays" });
   const gZones = svg.createSvg("g", { cls: "zones" });
   const gCoords = svg.createSvg("g", { cls: "coords" });
+  const gRegions = svg.createSvg("g", { cls: "regions" });
 
   const borders = getBorders(source).map(
     (b) => new Border(gBorders, b.tag, b.colour, b.thickness),
@@ -533,6 +603,10 @@ export default async function renderHexMap(
   const zones = getZones(source).map(
     (z) => new Zone(gZones, z.label, z.tag, z.fill, z.opacity),
   );
+  const regions = Array.from(
+    new Set(hexData.flatMap((h) => h.regions)),
+    (name) => new Region(gRegions, name),
+  ).sort((a, b) => a.name.localeCompare(b.name));
 
   for (const {
     hex,
@@ -547,6 +621,7 @@ export default async function renderHexMap(
     terrain,
     icon,
     tags,
+    regions: regionTags,
   } of hexData) {
     const ts = settings.terrain[terrain ?? "Unknown"];
     if (!ts) console.warn("missing data for " + terrain);
@@ -600,6 +675,11 @@ export default async function renderHexMap(
         // z.gHexes.createSvg("polygon", { attr: { points } });
         for (const corner of corners) z.add(hex, corner);
       }
+
+    for (const r of regions)
+      if (regionTags.includes(r.name)) {
+        for (const corner of corners) r.add(hex, corner);
+      }
   }
 
   const addRiverSegment = (thickness: number, points: Hex[]) =>
@@ -637,6 +717,7 @@ export default async function renderHexMap(
 
   addPanelSection(panel, gBorders, borders, "Borders");
   addPanelSection(panel, gOverlays, overlays, "Overlays");
+  addPanelSection(panel, gRegions, regions, "Regions");
 
   if (rivers.length || riverData.length) {
     const panelRivers = panel.createEl("section");
@@ -676,6 +757,41 @@ export default async function renderHexMap(
         items,
         text: "Zones",
         prepend: true,
+      }).classList.add("heading");
+
+    if (!panel.childElementCount) panel.remove();
+  }
+
+  {
+    const section = panel.createEl("section");
+    const items = section.createDiv({ cls: "list" });
+    for (const r of regions) {
+      const [x, y] = r.getCentrePoint();
+      if (x === "NaN") continue;
+
+      const borders = edgeWalk(layout, r.hexen);
+      for (const corners of borders)
+        r.g.createSvg("polygon", {
+          attr: {
+            points: toPointsString(corners),
+            stroke: "silver",
+            "fill-opacity": 0.2,
+          },
+        });
+
+      const text = r.g.createSvg("text", { attr: { x, y, fill: "silver" } });
+      text.textContent = r.name;
+      r.addToPanel(items);
+    }
+    if (!items.childElementCount) section.remove();
+    else
+      makeDisplayToggle({
+        parent: section,
+        g: gRegions,
+        items,
+        text: "Regions",
+        prepend: true,
+        value: false,
       }).classList.add("heading");
 
     if (!panel.childElementCount) panel.remove();

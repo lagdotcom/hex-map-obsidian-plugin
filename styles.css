@@ -28,18 +28,30 @@
 }
 
 .hexMap .icons text,
-.hexMap .zones text {
+.hexMap .zones text,
+.hexMap .regions text {
   alignment-baseline: middle;
   text-anchor: middle;
 }
 
-.hexMap .zones text {
+.hexMap .zones text,
+.hexMap .regions text {
+  pointer-events: none;
+  user-select: none;
   font-size: 12px;
   text-shadow: 0 0 4px black;
 }
-.hexMap .zones polygon {
+.hexMap .zones polygon,
+.hexMap .regions polygon {
   stroke-dasharray: 2;
   stroke-width: 2px;
+}
+
+.hexMap .regions polygon:hover {
+  opacity: 0.2;
+}
+.hexMap .regions:hover text {
+  color: yellow;
 }
 
 .hexMap .rivers polyline {
@@ -64,6 +76,7 @@
   font-size: 0.8em;
   display: flex;
   flex-direction: row;
+  flex-wrap: wrap;
   column-gap: 8px;
 }
 .panel label {

@@ -9,6 +9,7 @@ export interface HexMapOptions {
   key: string;
   terrainKey: string;
   iconKey: string;
+  regionKey: string;
   size: number;
   margin: number;
   coordOffset: number;
@@ -43,6 +44,7 @@ export function getOptions(source: string, settings: HexMapPluginSettings) {
     offset,
     terrainKey,
     iconKey,
+    regionKey,
     size,
     margin,
     coordOffset,
@@ -59,6 +61,7 @@ export function getOptions(source: string, settings: HexMapPluginSettings) {
     offset,
     terrainKey,
     iconKey,
+    regionKey,
     size,
     margin,
     coordOffset,

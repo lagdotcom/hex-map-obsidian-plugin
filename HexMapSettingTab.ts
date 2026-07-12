@@ -25,6 +25,7 @@ export default class HexMapSettingTab extends PluginSettingTab {
     containerEl.createEl("h2", { text: "Default Map Settings" });
     this.addTextField("terrainKey", "Terrain Key");
     this.addTextField("iconKey", "Icon Key");
+    this.addTextField("regionKey", "Region Key");
     this.addNumberField("size", "Hex Size");
     this.addNumberField("margin", "Margin Size");
     this.addNumberField("coordOffset", "Coordinate Offset");

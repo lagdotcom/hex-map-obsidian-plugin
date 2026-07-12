@@ -22,6 +22,7 @@ export interface HexMapPluginSettings {
   offset: string;
   terrainKey: string;
   iconKey: string;
+  regionKey: string;
   size: number;
   margin: number;
   coordOffset: number;
@@ -42,6 +43,7 @@ export const DEFAULT_SETTINGS: HexMapPluginSettings = {
   offset: "odd",
   terrainKey: "terrain",
   iconKey: "icon",
+  regionKey: "parent",
   size: 10,
   margin: 5,
   coordOffset: 4,
