@@ -6,15 +6,7 @@ import Point from "hex/Point";
 import { addTerrainSymbols, useTerrainSymbol } from "icons";
 import { App, type TFile } from "obsidian";
 import createPanZoom from "panzoom";
-import {
-  getBorders,
-  getCoords,
-  getOptions,
-  getOverlays,
-  getRivers,
-  getZones,
-  type HexMapOptions,
-} from "parsing";
+import { getCoords, getOptions, type HexMapOptions } from "parsing";
 import { HexMapPluginSettings } from "settings";
 import { isDefined } from "tools";
 
@@ -509,6 +501,7 @@ async function getHexDataFromDataView({
 
 export default async function renderHexMap(
   app: App,
+  mapId: string,
   settings: HexMapPluginSettings,
   source: string,
   el: HTMLElement,
@@ -571,10 +564,11 @@ export default async function renderHexMap(
   if (isDefined(options.maxWidth)) svg.style.maxWidth = options.maxWidth;
   if (isDefined(options.maxHeight)) svg.style.maxHeight = options.maxHeight;
 
-  addTerrainSymbols(svg, options.terrainIconSize);
+  const defs = svg.createSvg("defs");
+
+  addTerrainSymbols(svg, mapId, options.terrainIconSize);
 
   // set up for zone labels
-  // const defs = svg.createSvg("defs");
   // const filter = defs.createSvg("filter", {
   //   attr: { x: -0.05, y: -0.1, width: 1.1, height: 1.2, id: "hexMapSolid" },
   // });
@@ -582,6 +576,30 @@ export default async function renderHexMap(
   // filter.createSvg("feComposite", {
   //   attr: { in: "SourceGraphic", operator: "xor" },
   // });
+
+  const getZoneHatching = (colours: string[], stripe: number) => {
+    const id = `${mapId}-hatch-${colours
+      .sort()
+      .join("-")
+      .replace(/[^\w-]/g, "")}`;
+    if (!defs.querySelector(`#${CSS.escape(id)}`)) {
+      const p = defs.createSvg("pattern", {
+        attr: {
+          id,
+          patternUnits: "userSpaceOnUse",
+          width: stripe * colours.length,
+          height: 1,
+          patternTransform: "rotate(45)",
+        },
+      });
+      colours.forEach((fill, i) =>
+        p.createSvg("rect", {
+          attr: { x: i * stripe, width: stripe, height: 1, fill },
+        }),
+      );
+    }
+    return `url(#${id})`;
+  };
 
   const panel = el.createDiv({ cls: "panel" });
 
@@ -595,15 +613,15 @@ export default async function renderHexMap(
   const gCoords = svg.createSvg("g", { cls: "coords" });
   const gRegions = svg.createSvg("g", { cls: "regions" });
 
-  const borders = getBorders(source).map(
-    (b) => new Border(gBorders, b.tag, b.colour, b.thickness),
+  const borders = (options.borders ?? []).map(
+    (b) => new Border(gBorders, b.tag, b.colour, b.thickness ?? 1),
   );
-  const overlays = getOverlays(source).map(
-    (o) => new Overlay(gOverlays, o.tag, o.fill, o.opacity),
+  const overlays = (options.overlays ?? []).map(
+    (o) => new Overlay(gOverlays, o.tag, o.bg, o.opacity ?? 0.4),
   );
-  const rivers = getRivers(source, options);
-  const zones = getZones(source).map(
-    (z) => new Zone(gZones, z.label, z.tag, z.fill, z.opacity),
+  const rivers = options.rivers ?? [];
+  const zones = (options.zones ?? []).map(
+    (z) => new Zone(gZones, z.label, z.tag, z.bg, z.opacity ?? 0.4),
   );
   const regions = Array.from(
     new Set(hexData.flatMap((h) => h.regions)),
@@ -643,6 +661,7 @@ export default async function renderHexMap(
     if (ts?.icon)
       useTerrainSymbol(
         gTerrainIcons,
+        mapId,
         x,
         y,
         options.terrainIconSize,
@@ -672,11 +691,25 @@ export default async function renderHexMap(
       if (o.tag && tags.includes(o.tag))
         o.g.createSvg("polygon", { attr: { points } });
 
-    for (const z of zones)
-      if (z.tag && tags.includes(z.tag)) {
-        // z.gHexes.createSvg("polygon", { attr: { points } });
-        for (const corner of corners) z.add(hex, corner);
-      }
+    const zoneMatches = zones.filter((z) => tags.includes(z.tag));
+    if (zoneMatches.length > 1) {
+      const opacity = Math.min(
+        0.8,
+        zoneMatches.reduce((t, z) => t + z.opacity, 0) /
+          (zoneMatches.length - 1),
+      );
+      gZones.createSvg("polygon", {
+        attr: {
+          points,
+          opacity,
+          fill: getZoneHatching(
+            zoneMatches.map((z) => z.fill),
+            options.size / 4,
+          ),
+        },
+      });
+    } else if (zoneMatches.length === 1)
+      for (const corner of corners) zoneMatches[0].add(hex, corner);
 
     for (const r of regions)
       if (regionTags.includes(r.name)) {
@@ -693,11 +726,14 @@ export default async function renderHexMap(
       },
     });
 
-  for (const { width, coords } of rivers)
+  for (const { size, path } of rivers) {
+    const coords = path.map(getCoords).filter(isDefined);
+
     addRiverSegment(
-      width,
-      coords.map((co) => Hex.fromQOffsetCoordinates(offset, co)),
+      size,
+      coords.map((co) => Hex.fromQOffsetCoordinates(offset, co[0])),
     );
+  }
 
   for (const river of riverData) {
     const accumulator: Hex[] = [];

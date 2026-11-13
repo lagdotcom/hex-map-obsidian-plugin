@@ -1,7 +1,28 @@
 import OffsetCoordinates from "hex/OffsetCoordinates";
+import { parseYaml } from "obsidian";
 import { HexMapPluginSettings } from "settings";
-import { asNumber, toInt } from "tools";
-import { KeysMatching } from "tools";
+import { toInt } from "tools";
+
+export interface MapRiver {
+  size: number;
+  path: string[];
+}
+export interface MapOverlay {
+  tag: string;
+  bg: string;
+  opacity?: number;
+}
+export interface MapZone {
+  label: string;
+  tag: string;
+  bg: string;
+  opacity?: number;
+}
+export interface MapBorder {
+  tag: string;
+  colour: string;
+  thickness?: number;
+}
 
 export interface HexMapOptions {
   orientation: string;
@@ -23,111 +44,19 @@ export interface HexMapOptions {
   maxWidth?: string;
   maxHeight?: string;
   useDataView: boolean;
+
+  borders?: MapBorder[];
+  rivers?: MapRiver[];
+  overlays?: MapOverlay[];
+  zones?: MapZone[];
 }
-type NumberKey = KeysMatching<HexMapOptions, number>;
-type StringKey = KeysMatching<HexMapOptions, string>;
-const numberKeys: NumberKey[] = [
-  "size",
-  "margin",
-  "coordOffset",
-  "coordSize",
-  "iconSize",
-  "terrainIconSize",
-  "riverWidth",
-] as const;
-
-const keyValuePattern = /^(\w+)=(\w+)$/gim;
-
-export function getOptions(source: string, settings: HexMapPluginSettings) {
-  const {
-    orientation,
-    offset,
-    terrainKey,
-    iconKey,
-    regionKey,
-    size,
-    margin,
-    coordOffset,
-    coordSize,
-    iconSize,
-    terrainIconSize,
-    riverWidth,
-    riverColour,
-    useDataView,
-  } = settings;
-  const options: HexMapOptions = {
-    key: "",
-    orientation,
-    offset,
-    terrainKey,
-    iconKey,
-    regionKey,
-    size,
-    margin,
-    coordOffset,
-    coordSize,
-    iconSize,
-    terrainIconSize,
-    riverWidth,
-    riverColour,
-    useDataView,
-  };
-
-  for (const [, key, value] of source.matchAll(keyValuePattern)) {
-    if (numberKeys.includes(key as NumberKey))
-      options[key as NumberKey] = Number(value);
-    else options[key as StringKey] = value;
-  }
-
-  return options;
-}
-
-const riverPattern = /^river:(?:(\d+):)?(.*)$/gim;
-const coordPattern = /(\d+)\.(\d+)/gi;
-export function getRivers(source: string, options: HexMapOptions) {
-  return Array.from(source.matchAll(riverPattern)).map(
-    ([, rawWidth, path]) => ({
-      width: asNumber(rawWidth, options.riverWidth),
-      coords: Array.from(path.matchAll(coordPattern)).map(([, col, row]) => ({
-        col: Number(col),
-        row: Number(row),
-      })),
-    }),
-  );
-}
-
-const overlayTagPattern = /^overlay:([^:]+):([^:]+)(?::([\d.]+))?$/gim;
-export function getOverlays(source: string) {
-  return Array.from(source.matchAll(overlayTagPattern)).map(
-    ([, tag, fill, opacity]) => ({
-      tag,
-      fill,
-      opacity: asNumber(opacity, 0.4),
-    }),
-  );
-}
-
-const borderTagPattern = /^border:([^:]+):([^:]+)(?::([\d.]+))?$/gim;
-export function getBorders(source: string) {
-  return Array.from(source.matchAll(borderTagPattern)).map(
-    ([, tag, colour, thickness]) => ({
-      tag,
-      colour,
-      thickness: asNumber(thickness, 1),
-    }),
-  );
-}
-
-const zoneTagPattern = /^zone:([^:]+):([^:]+):([^:]+)(?::([\d.]+))?$/gim;
-export function getZones(source: string) {
-  return Array.from(source.matchAll(zoneTagPattern)).map(
-    ([, label, tag, fill, opacity]) => ({
-      label,
-      tag,
-      fill,
-      opacity: asNumber(opacity, 0.4),
-    }),
-  );
+export function getOptions(
+  source: string,
+  settings: HexMapPluginSettings,
+): HexMapOptions {
+  const mapSettings = parseYaml(source.replace(/\u00a0/g, " ")); // fixes paste issues
+  const combined = { ...settings, ...mapSettings };
+  return combined;
 }
 
 const dotPattern = /(\d+)\.(\d+)/;

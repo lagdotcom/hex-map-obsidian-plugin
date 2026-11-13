@@ -3,6 +3,8 @@ import { Plugin } from "obsidian";
 import renderHexMap from "rendering";
 import { DEFAULT_SETTINGS, HexMapPluginSettings } from "settings";
 
+let mapCount = 0;
+
 export default class HexMapPlugin extends Plugin {
   settings!: HexMapPluginSettings;
 
@@ -12,7 +14,14 @@ export default class HexMapPlugin extends Plugin {
     this.addSettingTab(new HexMapSettingTab(this.app, this));
 
     this.registerMarkdownCodeBlockProcessor("hexmap", (source, el, ctx) =>
-      renderHexMap(this.app, this.settings, source, el, ctx.sourcePath),
+      renderHexMap(
+        this.app,
+        `map${mapCount++}`,
+        this.settings,
+        source,
+        el,
+        ctx.sourcePath,
+      ),
     );
   }
 
