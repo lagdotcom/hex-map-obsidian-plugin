@@ -41,7 +41,7 @@ export default class HexMapSettingTab extends PluginSettingTab {
       }),
     );
 
-    containerEl.createEl("h1", { text: "Terrain Display" });
+    containerEl.createEl("h2", { text: "Terrain Display" });
     const coloursEl = containerEl.createDiv();
 
     for (const [key, val] of Object.entries(this.plugin.settings.terrain).sort(
