@@ -263,14 +263,14 @@ function getHexDataFromVault({
   offset,
   layout,
   cm,
-  centreHex,
+  shouldExclude,
 }: {
   app: App;
   options: HexMapOptions;
   offset: 1 | -1;
   layout: Layout;
   cm: CoordManager;
-  centreHex?: Hex;
+  shouldExclude?: (hex: Hex) => boolean;
 }): HexInfo[] {
   const usedCoords = new Map<string, string>();
 
@@ -286,13 +286,7 @@ function getHexDataFromVault({
 
       return coords.map((co) => {
         const hex = Hex.fromQOffsetCoordinates(offset, co);
-
-        if (
-          isDefined(options.maxDistance) &&
-          centreHex &&
-          centreHex.distance(hex) > options.maxDistance
-        )
-          return undefined;
+        if (shouldExclude?.(hex)) return undefined;
 
         const { x, y } = layout.toPixel(hex);
         const { col, row } = co;
@@ -423,13 +417,13 @@ async function getHexDataFromDataView({
   offset,
   layout,
   cm,
-  centreHex,
+  shouldExclude,
 }: {
   options: HexMapOptions;
   offset: 1 | -1;
   layout: Layout;
   cm: CoordManager;
-  centreHex?: Hex;
+  shouldExclude?: (hex: Hex) => boolean;
 }): Promise<HexInfo[]> {
   const usedCoords = new Map<string, string>();
 
@@ -454,13 +448,7 @@ async function getHexDataFromDataView({
 
         return coords.map((co) => {
           const hex = Hex.fromQOffsetCoordinates(offset, co);
-
-          if (
-            isDefined(options.maxDistance) &&
-            centreHex &&
-            centreHex.distance(hex) > options.maxDistance
-          )
-            return undefined;
+          if (shouldExclude?.(hex)) return undefined;
 
           const { x, y } = layout.toPixel(hex);
           const { col, row } = co;
@@ -499,6 +487,9 @@ async function getHexDataFromDataView({
     .filter(isDefined);
 }
 
+const getMaxDistanceFilter = (matches: Hex[], max: number) => (hex: Hex) =>
+  matches.find((ma) => ma.distance(hex) <= max) ? false : true;
+
 export default async function renderHexMap(
   app: App,
   mapId: string,
@@ -523,7 +514,7 @@ export default async function renderHexMap(
   const offset = options.offset === "even" ? 1 : -1;
   const cm = new CoordManager(options.margin);
 
-  let centreHex: Hex | undefined;
+  let matchedHexes: Hex[] = [];
   if (options.centre) {
     if (options.centre.toLowerCase() === "this") {
       const sourceFile = app.vault.getFileByPath(sourcePath);
@@ -535,25 +526,37 @@ export default async function renderHexMap(
       const coords = getCoords(fm[options.key]);
       if (!coords) return die("cannot use 'this': invalid coords");
 
-      centreHex = Hex.fromQOffsetCoordinates(offset, coords[0]);
+      matchedHexes = coords.map((co) => Hex.fromQOffsetCoordinates(offset, co));
     } else {
       const coords = getCoords(options.centre);
       if (!coords) return die(`cannot parse coords: ${options.centre}`);
 
-      centreHex = Hex.fromQOffsetCoordinates(offset, coords[0]);
+      matchedHexes = coords.map((co) => Hex.fromQOffsetCoordinates(offset, co));
     }
   }
+
+  const shouldExclude =
+    matchedHexes.length && isDefined(options.maxDistance)
+      ? getMaxDistanceFilter(matchedHexes, options.maxDistance)
+      : undefined;
 
   const hexData =
     "DataviewAPI" in window && settings.useDataView
       ? await getHexDataFromDataView({
-          centreHex,
+          shouldExclude,
           cm,
           layout,
           offset,
           options,
         })
-      : getHexDataFromVault({ app, centreHex, cm, layout, offset, options });
+      : getHexDataFromVault({
+          app,
+          shouldExclude,
+          cm,
+          layout,
+          offset,
+          options,
+        });
 
   const riverData = getRiverDataFromVault({ app, offset, options });
 
