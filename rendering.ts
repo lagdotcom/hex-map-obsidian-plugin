@@ -3,7 +3,7 @@ import Layout from "hex/Layout";
 import { edgeWalk } from "hex/maths";
 import { flat, pointy } from "hex/Orientation";
 import Point from "hex/Point";
-import { addTerrainIcon } from "icons";
+import { addTerrainSymbols, useTerrainSymbol } from "icons";
 import { App, type TFile } from "obsidian";
 import createPanZoom from "panzoom";
 import {
@@ -571,6 +571,8 @@ export default async function renderHexMap(
   if (isDefined(options.maxWidth)) svg.style.maxWidth = options.maxWidth;
   if (isDefined(options.maxHeight)) svg.style.maxHeight = options.maxHeight;
 
+  addTerrainSymbols(svg, options.terrainIconSize);
+
   // set up for zone labels
   // const defs = svg.createSvg("defs");
   // const filter = defs.createSvg("filter", {
@@ -639,7 +641,7 @@ export default async function renderHexMap(
     title.textContent = name;
 
     if (ts?.icon)
-      addTerrainIcon(
+      useTerrainSymbol(
         gTerrainIcons,
         x,
         y,

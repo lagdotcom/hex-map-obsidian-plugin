@@ -37,7 +37,21 @@ export const iconOptions = Object.fromEntries(
     .map((k) => [k, k]),
 );
 
-export function addTerrainIcon(
+const getSymbolId = (icon: TerrainIconName, prefix: string = "") =>
+  `${prefix}symbol-${icon}`;
+
+export function addTerrainSymbols(parent: SVGElement, size: number) {
+  for (const [icon, html] of Object.entries(iconLibrary)) {
+    const id = getSymbolId(icon as TerrainIconName);
+
+    const g = parent.createSvg("symbol", {
+      attr: { id, viewBox: `0 0 100 100`, width: size, height: size },
+    });
+    g.innerHTML = html;
+  }
+}
+
+export function useTerrainSymbol(
   parent: SVGElement,
   x: number,
   y: number,
@@ -45,20 +59,12 @@ export function addTerrainIcon(
   icon: TerrainIconName,
   fg: string,
 ) {
-  const html = iconLibrary[icon];
-  if (!html) return;
-
-  const g = parent.createSvg("svg", {
+  return parent.createSvg("use", {
     attr: {
-      viewBox: `0 0 100 100`,
+      href: getSymbolId(icon, "#"),
       x: x - size / 2,
       y: y - size / 2,
-      width: size,
-      height: size,
       color: fg,
     },
   });
-  g.innerHTML = html;
-
-  return g;
 }
