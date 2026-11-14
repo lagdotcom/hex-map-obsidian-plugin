@@ -510,7 +510,10 @@ export default async function renderHexMap(
 
   let matchedHexes: Hex[] = [];
   if (options.centre) {
-    if (options.centre.toLowerCase() === "this") {
+    if (
+      typeof options.centre === "string" &&
+      options.centre.toLowerCase() === "this"
+    ) {
       const sourceFile = app.vault.getFileByPath(sourcePath);
       if (!sourceFile) return die("cannot use 'this': not in a file???");
 
