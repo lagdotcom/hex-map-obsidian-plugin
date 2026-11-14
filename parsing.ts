@@ -24,27 +24,12 @@ export interface MapBorder {
   thickness?: number;
 }
 
-export interface HexMapOptions {
-  orientation: string;
-  offset: string;
+export interface HexMapOptions extends HexMapPluginSettings {
   key: string;
-  terrainKey: string;
-  iconKey: string;
-  regionKey: string;
-  size: number;
-  margin: number;
-  coordOffset: number;
-  coordSize: number;
-  iconSize: number;
-  terrainIconSize: number;
-  riverWidth: number;
-  riverColour: string;
   centre?: string;
   maxDistance?: number;
   maxWidth?: string;
   maxHeight?: string;
-  useDataView: boolean;
-
   borders?: MapBorder[];
   rivers?: MapRiver[];
   overlays?: MapOverlay[];

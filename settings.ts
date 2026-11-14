@@ -23,6 +23,7 @@ export interface HexMapPluginSettings {
   terrainKey: string;
   iconKey: string;
   regionKey: string;
+  controllerKey: string;
   size: number;
   margin: number;
   coordOffset: number;
@@ -33,6 +34,13 @@ export interface HexMapPluginSettings {
   riverWidth: number;
   riverColour: string;
   useDataView: boolean;
+  borderThickness: number;
+  overlayOpacity: number;
+  zoneColour: string;
+  regionOpacity: number;
+  terrainBg: string;
+  terrainFg: string;
+  zoneOpacity: number;
 }
 
 export type StringKey = KeysMatching<HexMapPluginSettings, string>;
@@ -44,6 +52,7 @@ export const DEFAULT_SETTINGS: HexMapPluginSettings = {
   terrainKey: "terrain",
   iconKey: "icon",
   regionKey: "parent",
+  controllerKey: "controller",
   size: 10,
   margin: 5,
   coordOffset: 4,
@@ -53,6 +62,13 @@ export const DEFAULT_SETTINGS: HexMapPluginSettings = {
   riverWidth: 5,
   riverColour: "#8cb2d8",
   useDataView: false,
+  borderThickness: 1,
+  overlayOpacity: 0.4,
+  zoneColour: "silver",
+  regionOpacity: 0.2,
+  terrainBg: "#222222",
+  terrainFg: "black",
+  zoneOpacity: 0.2,
   terrain: {
     Badlands: ts("#cd9b00", "#545556", "broken"),
     Barren: ts("#ffcc67", "#545556", "broken"),

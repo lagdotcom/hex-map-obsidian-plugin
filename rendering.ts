@@ -4,9 +4,14 @@ import { edgeWalk } from "hex/maths";
 import { flat, pointy } from "hex/Orientation";
 import Point from "hex/Point";
 import { addTerrainSymbols, useTerrainSymbol } from "icons";
-import { App, type TFile } from "obsidian";
+import { App, type FrontmatterLinkCache, type TFile } from "obsidian";
 import createPanZoom from "panzoom";
-import { getCoords, getOptions, type HexMapOptions } from "parsing";
+import {
+  getCoords,
+  getOptions,
+  type HexMapOptions,
+  type MapZone,
+} from "parsing";
 import { HexMapPluginSettings } from "settings";
 import { isDefined } from "tools";
 
@@ -123,40 +128,6 @@ class Overlay {
   }
 }
 
-class Region {
-  cm: CoordManager;
-  g: SVGGElement;
-  hexen: Set<Hex>;
-  points: Point[];
-
-  constructor(
-    public parent: SVGGElement,
-    public name: string,
-  ) {
-    this.cm = new CoordManager(0);
-    this.g = parent.createSvg("g", { attr: {} });
-    this.hexen = new Set();
-    this.points = [];
-  }
-
-  add(hex: Hex, point: Point) {
-    this.cm.addToBounds(point);
-    this.hexen.add(hex);
-    this.points.push(point);
-  }
-
-  addToPanel(panel: HTMLElement) {
-    if (this.g.childElementCount)
-      makeDisplayToggle({ parent: panel, g: this.g, text: this.name });
-  }
-
-  getCentrePoint() {
-    const cx = (this.cm.left + this.cm.right) / 2;
-    const cy = (this.cm.bot + this.cm.top) / 2;
-    return [cx.toString(), cy.toString()];
-  }
-}
-
 class Zone {
   cm: CoordManager;
   g: SVGGElement;
@@ -171,12 +142,26 @@ class Zone {
     public fill: string,
     public opacity: number,
   ) {
-    this.g = parent.createSvg("g", { attr: { fill } });
+    this.g = parent.createSvg("g");
     this.g.dataset["tag"] = tag;
-    this.gHexes = this.g.createSvg("g", { attr: { opacity } });
+    this.gHexes = this.g.createSvg("g", {
+      attr: { stroke: fill, fill, "fill-opacity": opacity },
+    });
     this.cm = new CoordManager(0);
     this.hexen = new Set();
     this.points = [];
+  }
+
+  apply(zone: MapZone) {
+    this.label = zone.label;
+    this.tag = zone.tag;
+    this.fill = zone.bg;
+    this.gHexes.setAttribute("stroke", this.fill);
+    this.gHexes.setAttribute("fill", this.fill);
+    if (isDefined(zone.opacity)) {
+      this.opacity = zone.opacity;
+      this.gHexes.setAttr("fill-opacity", zone.opacity);
+    }
   }
 
   add(hex: Hex, point: Point) {
@@ -220,6 +205,16 @@ function toPointsString(p: Point[]) {
   return p.map((p) => p.toString()).join(" ");
 }
 
+type HexFilter = (hex: Hex) => boolean;
+
+interface ZoneInfo {
+  name: string;
+  colour?: string;
+  opacity?: number;
+}
+
+type InfoResolver = (link: FrontmatterLinkCache, src: string) => ZoneInfo;
+
 interface HexInfo {
   hex: Hex;
   x: number;
@@ -233,28 +228,13 @@ interface HexInfo {
   terrain: string;
   icon: string;
   tags: string[];
-  regions: string[];
+  regions: ZoneInfo[];
+  controllers: ZoneInfo[];
 }
 
-function getRegionName(app: App, path: string, name: string) {
-  if (name.startsWith("[[")) {
-    const other = app.metadataCache.getFirstLinkpathDest(
-      name.slice(2, -2),
-      path,
-    );
-    if (other) return other.basename;
-
-    return name.slice(2, -2);
-  }
-
-  return name;
-}
-
-function getRegionNames(app: App, path: string, names?: string | string[]) {
-  if (!names) return [];
-  if (!Array.isArray(names)) names = [names];
-
-  return names.map((name) => getRegionName(app, path, name));
+function extractLinks(key: string, links?: FrontmatterLinkCache[]) {
+  const pattern = new RegExp(`${key}[.\\d+]`);
+  return links ? links.filter((l) => l.key.match(pattern)) : [];
 }
 
 function getHexDataFromVault({
@@ -263,6 +243,8 @@ function getHexDataFromVault({
   offset,
   layout,
   cm,
+  resolveControllerLink,
+  resolveRegionLink,
   shouldExclude,
 }: {
   app: App;
@@ -270,7 +252,9 @@ function getHexDataFromVault({
   offset: 1 | -1;
   layout: Layout;
   cm: CoordManager;
-  shouldExclude?: (hex: Hex) => boolean;
+  resolveControllerLink: InfoResolver;
+  resolveRegionLink: InfoResolver;
+  shouldExclude?: HexFilter;
 }): HexInfo[] {
   const usedCoords = new Map<string, string>();
 
@@ -318,7 +302,13 @@ function getHexDataFromVault({
           terrain: fm[options.terrainKey],
           icon: fm[options.iconKey],
           tags,
-          regions: getRegionNames(app, file.path, fm[options.regionKey]),
+          regions: extractLinks(options.regionKey, cached.frontmatterLinks).map(
+            (link) => resolveRegionLink(link, file.path),
+          ),
+          controllers: extractLinks(
+            options.controllerKey,
+            cached.frontmatterLinks,
+          ).map((link) => resolveControllerLink(link, file.path)),
         };
       });
     })
@@ -423,7 +413,7 @@ async function getHexDataFromDataView({
   offset: 1 | -1;
   layout: Layout;
   cm: CoordManager;
-  shouldExclude?: (hex: Hex) => boolean;
+  shouldExclude?: HexFilter;
 }): Promise<HexInfo[]> {
   const usedCoords = new Map<string, string>();
 
@@ -480,6 +470,7 @@ async function getHexDataFromDataView({
             icon: iconField ?? "",
             tags,
             regions: [], // TODO
+            controllers: [], // TODO
           };
         });
       },
@@ -487,8 +478,10 @@ async function getHexDataFromDataView({
     .filter(isDefined);
 }
 
-const getMaxDistanceFilter = (matches: Hex[], max: number) => (hex: Hex) =>
-  matches.find((ma) => ma.distance(hex) <= max) ? false : true;
+const getMaxDistanceFilter =
+  (matches: Hex[], max: number): HexFilter =>
+  (hex) =>
+    matches.find((ma) => ma.distance(hex) <= max) ? false : true;
 
 export default async function renderHexMap(
   app: App,
@@ -540,8 +533,35 @@ export default async function renderHexMap(
       ? getMaxDistanceFilter(matchedHexes, options.maxDistance)
       : undefined;
 
+  const regionMap = new Map<string, ZoneInfo>();
+  const zoneMap = new Map<string, ZoneInfo>();
+
+  const resolveLink =
+    (map: Map<string, ZoneInfo>) =>
+    (link: FrontmatterLinkCache, src: string) => {
+      const previous = map.get(link.link);
+      if (previous) return previous;
+
+      const path = app.metadataCache.getFirstLinkpathDest(link.link, src);
+      const fm = path
+        ? app.metadataCache.getFileCache(path)?.frontmatter
+        : undefined;
+
+      const info: ZoneInfo = {
+        name: link.displayText ?? link.link,
+        colour: fm?.colour,
+        opacity: fm?.opacity,
+      };
+
+      map.set(link.link, info);
+      return info;
+    };
+
+  const resolveRegionLink = resolveLink(regionMap);
+  const resolveControllerLink = resolveLink(zoneMap);
+
   const hexData =
-    "DataviewAPI" in window && settings.useDataView
+    "DataviewAPI" in window && options.useDataView
       ? await getHexDataFromDataView({
           shouldExclude,
           cm,
@@ -551,6 +571,8 @@ export default async function renderHexMap(
         })
       : getHexDataFromVault({
           app,
+          resolveControllerLink,
+          resolveRegionLink,
           shouldExclude,
           cm,
           layout,
@@ -617,19 +639,58 @@ export default async function renderHexMap(
   const gRegions = svg.createSvg("g", { cls: "regions" });
 
   const borders = (options.borders ?? []).map(
-    (b) => new Border(gBorders, b.tag, b.colour, b.thickness ?? 1),
+    (b) =>
+      new Border(
+        gBorders,
+        b.tag,
+        b.colour,
+        b.thickness ?? options.borderThickness,
+      ),
   );
   const overlays = (options.overlays ?? []).map(
-    (o) => new Overlay(gOverlays, o.tag, o.bg, o.opacity ?? 0.4),
+    (o) =>
+      new Overlay(gOverlays, o.tag, o.bg, o.opacity ?? options.overlayOpacity),
   );
   const rivers = options.rivers ?? [];
-  const zones = (options.zones ?? []).map(
-    (z) => new Zone(gZones, z.label, z.tag, z.bg, z.opacity ?? 0.4),
+
+  const zones = Array.from(
+    zoneMap.values(),
+    (z) =>
+      new Zone(
+        gZones,
+        z.name,
+        "",
+        z.colour ?? options.zoneColour,
+        z.opacity ?? options.zoneOpacity,
+      ),
   );
+  for (const zone of options.zones ?? []) {
+    const existing = zones.find((z) => z.label === zone.label);
+    if (existing) existing.apply(zone);
+    else
+      zones.push(
+        new Zone(
+          gZones,
+          zone.label,
+          zone.tag,
+          zone.bg,
+          zone.opacity ?? options.zoneOpacity,
+        ),
+      );
+  }
+  zones.sort((a, b) => a.label.localeCompare(b.label));
+
   const regions = Array.from(
-    new Set(hexData.flatMap((h) => h.regions)),
-    (name) => new Region(gRegions, name),
-  ).sort((a, b) => a.name.localeCompare(b.name));
+    regionMap.values(),
+    (r) =>
+      new Zone(
+        gRegions,
+        r.name,
+        "",
+        r.colour ?? options.zoneColour,
+        r.opacity ?? options.regionOpacity,
+      ),
+  ).sort((a, b) => a.label.localeCompare(b.label));
 
   for (const {
     hex,
@@ -644,22 +705,22 @@ export default async function renderHexMap(
     terrain,
     icon,
     tags,
-    regions: regionTags,
+    regions: regionInfo,
+    controllers: controllerInfo,
   } of hexData) {
-    const ts = settings.terrain[terrain ?? "Unknown"];
+    const titleLines = [name, `Terrain: ${terrain}`];
+
+    const ts = options.terrain[terrain ?? "Unknown"];
     if (!ts) console.warn("missing data for " + terrain);
 
     const polygon = gTerrain.createSvg("polygon", {
       attr: {
         points,
-        fill: ts?.bg ?? "#222222",
+        fill: ts?.bg ?? options.terrainBg,
         "data-name": name,
         "data-path": path,
       },
     });
-
-    const title = polygon.createSvg("title");
-    title.textContent = name;
 
     if (ts?.icon)
       useTerrainSymbol(
@@ -669,7 +730,7 @@ export default async function renderHexMap(
         y,
         options.terrainIconSize,
         ts.icon,
-        ts?.fg ?? "black",
+        ts?.fg ?? options.terrainFg,
       );
 
     const coord = gCoords.createSvg("text", {
@@ -694,7 +755,11 @@ export default async function renderHexMap(
       if (o.tag && tags.includes(o.tag))
         o.g.createSvg("polygon", { attr: { points } });
 
-    const zoneMatches = zones.filter((z) => tags.includes(z.tag));
+    const zoneMatches = zones.filter(
+      (z) =>
+        tags.includes(z.tag) ||
+        controllerInfo.find((ci) => ci.name === z.label),
+    );
     if (zoneMatches.length > 1) {
       const opacity = Math.min(
         0.8,
@@ -711,13 +776,23 @@ export default async function renderHexMap(
           ),
         },
       });
-    } else if (zoneMatches.length === 1)
-      for (const corner of corners) zoneMatches[0].add(hex, corner);
+      titleLines.push(
+        `Contested: ${zoneMatches.map((z) => z.label).join(", ")}`,
+      );
+    } else if (zoneMatches.length === 1) {
+      const zone = zoneMatches[0];
+      for (const corner of corners) zone.add(hex, corner);
+      titleLines.push(`Controller: ${zone.label}`);
+    }
 
     for (const r of regions)
-      if (regionTags.includes(r.name)) {
+      if (regionInfo.find((x) => x.name === r.label)) {
         for (const corner of corners) r.add(hex, corner);
+        titleLines.push(`Region: ${r.label}`);
       }
+
+    const title = polygon.createSvg("title");
+    title.textContent = titleLines.join("\n");
   }
 
   const addRiverSegment = (thickness: number, points: Hex[]) =>
@@ -758,7 +833,6 @@ export default async function renderHexMap(
 
   addPanelSection(panel, gBorders, borders, "Borders");
   addPanelSection(panel, gOverlays, overlays, "Overlays");
-  addPanelSection(panel, gRegions, regions, "Regions");
 
   if (rivers.length || riverData.length) {
     const panelRivers = panel.createEl("section");
@@ -778,12 +852,8 @@ export default async function renderHexMap(
 
       const borders = edgeWalk(layout, z.hexen);
       for (const corners of borders)
-        z.g.createSvg("polygon", {
-          attr: {
-            points: toPointsString(corners),
-            stroke: z.fill,
-            "fill-opacity": z.opacity,
-          },
+        z.gHexes.createSvg("polygon", {
+          attr: { points: toPointsString(corners) },
         });
 
       const text = z.g.createSvg("text", { attr: { x, y, fill: z.fill } });
@@ -812,16 +882,12 @@ export default async function renderHexMap(
 
       const borders = edgeWalk(layout, r.hexen);
       for (const corners of borders)
-        r.g.createSvg("polygon", {
-          attr: {
-            points: toPointsString(corners),
-            stroke: "silver",
-            "fill-opacity": 0.2,
-          },
+        r.gHexes.createSvg("polygon", {
+          attr: { points: toPointsString(corners) },
         });
 
-      const text = r.g.createSvg("text", { attr: { x, y, fill: "silver" } });
-      text.textContent = r.name;
+      const text = r.g.createSvg("text", { attr: { x, y, fill: r.fill } });
+      text.textContent = r.label;
       r.addToPanel(items);
     }
     if (!items.childElementCount) section.remove();
