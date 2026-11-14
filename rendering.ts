@@ -234,7 +234,7 @@ interface HexInfo {
 }
 
 function extractLinks(key: string, links?: FrontmatterLinkCache[]) {
-  const pattern = new RegExp(`${key}(.\\d+)?`);
+  const pattern = new RegExp(`^${key}(.\\d+)?$`);
   return links ? links.filter((l) => l.key.match(pattern)) : [];
 }
 
@@ -508,6 +508,8 @@ export default async function renderHexMap(
   const offset = options.offset === "even" ? 1 : -1;
   const cm = new CoordManager(options.margin);
 
+  const riverData = getRiverDataFromVault({ app, offset, options });
+
   let matchedHexes: Hex[] = [];
   if (options.centre) {
     if (
@@ -521,16 +523,13 @@ export default async function renderHexMap(
       if (!fm) return die("cannot use 'this': no frontmatter");
 
       const coords = getCoords(fm[options.key]);
-      const riverCoords = getCoords(fm[options.key + ".river"]);
+      const thisRiver = riverData.find((r) => r.path === sourcePath);
 
       if (coords)
         matchedHexes = coords.map((co) =>
           Hex.fromQOffsetCoordinates(offset, co),
         );
-      else if (riverCoords)
-        matchedHexes = riverCoords.map((co) =>
-          Hex.fromQOffsetCoordinates(offset, co),
-        );
+      else if (thisRiver) matchedHexes = thisRiver.nodes.map((co) => co.hex);
       else return die("cannot use 'this': invalid coords");
     } else {
       const coords = getCoords(options.centre);
@@ -592,8 +591,6 @@ export default async function renderHexMap(
           offset,
           options,
         });
-
-  const riverData = getRiverDataFromVault({ app, offset, options });
 
   const svg = hmc.createSvg("svg", {
     cls: "hexMap",
