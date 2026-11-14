@@ -208,6 +208,7 @@ function toPointsString(p: Point[]) {
 type HexFilter = (hex: Hex) => boolean;
 
 interface ZoneInfo {
+  id: string;
   name: string;
   colour?: string;
   opacity?: number;
@@ -233,7 +234,7 @@ interface HexInfo {
 }
 
 function extractLinks(key: string, links?: FrontmatterLinkCache[]) {
-  const pattern = new RegExp(`${key}[.\\d+]`);
+  const pattern = new RegExp(`${key}(.\\d+)?`);
   return links ? links.filter((l) => l.key.match(pattern)) : [];
 }
 
@@ -517,9 +518,17 @@ export default async function renderHexMap(
       if (!fm) return die("cannot use 'this': no frontmatter");
 
       const coords = getCoords(fm[options.key]);
-      if (!coords) return die("cannot use 'this': invalid coords");
+      const riverCoords = getCoords(fm[options.key + ".river"]);
 
-      matchedHexes = coords.map((co) => Hex.fromQOffsetCoordinates(offset, co));
+      if (coords)
+        matchedHexes = coords.map((co) =>
+          Hex.fromQOffsetCoordinates(offset, co),
+        );
+      else if (riverCoords)
+        matchedHexes = riverCoords.map((co) =>
+          Hex.fromQOffsetCoordinates(offset, co),
+        );
+      else return die("cannot use 'this': invalid coords");
     } else {
       const coords = getCoords(options.centre);
       if (!coords) return die(`cannot parse coords: ${options.centre}`);
@@ -548,6 +557,7 @@ export default async function renderHexMap(
         : undefined;
 
       const info: ZoneInfo = {
+        id: path?.path ?? link.link,
         name: link.displayText ?? link.link,
         colour: fm?.colour,
         opacity: fm?.opacity,
@@ -869,8 +879,6 @@ export default async function renderHexMap(
         text: "Zones",
         prepend: true,
       }).classList.add("heading");
-
-    if (!panel.childElementCount) panel.remove();
   }
 
   {
@@ -900,9 +908,9 @@ export default async function renderHexMap(
         prepend: true,
         value: false,
       }).classList.add("heading");
-
-    if (!panel.childElementCount) panel.remove();
   }
+
+  if (!panel.childElementCount) panel.remove();
 
   const pz = createPanZoom(svg, {
     minZoom: 0.5,
