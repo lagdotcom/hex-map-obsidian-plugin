@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <style>
+    .line {
+      stroke: currentColor;
+      stroke-width: 5;
+      fill: none;
+    }
+
+    .fill {
+      stroke: currentColor;
+      stroke-width: 5;
+      fill: currentColor;
+    }
+
+    .thin {
+      stroke: currentColor;
+      stroke-width: 3;
+      fill: none;
+    }
+  </style>
+  <path class="line" d="M35,85 l5,-50" />
+  <path class="line" d="M37,60 l15,-25" />
+  <ellipse class="fill" cx="38" cy="25" rx="20" ry="10" />
+  <ellipse class="fill" cx="62" cy="25" rx="20" ry="10" />
+  <path class="thin" d="M55,35 v30" />
+  <path class="thin" d="M60,35 v25" />
+  <path class="thin" d="M65,35 v32" />
+  <path class="thin" d="M70,35 v28" />
+</svg>

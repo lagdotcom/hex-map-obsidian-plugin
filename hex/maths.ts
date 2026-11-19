@@ -98,3 +98,13 @@ export function edgeWalk(layout: Layout, selected: Set<Hex>) {
   }
   return polygons;
 }
+
+export function getMidpoint(hexen: Hex[]) {
+  const half = Math.floor(hexen.length / 2);
+  if (hexen.length % 2) return hexen[half];
+
+  const a = hexen[half - 1];
+  const b = hexen[half];
+
+  return a.lerp(b, 0.5);
+}

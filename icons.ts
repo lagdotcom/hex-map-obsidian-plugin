@@ -1,4 +1,5 @@
 import broken from "./icons/broken.svg";
+import deadTree from "./icons/deadTree.svg";
 import dots from "./icons/dots.svg";
 import farm from "./icons/farm.svg";
 import fen from "./icons/fen.svg";
@@ -10,11 +11,13 @@ import forestFen from "./icons/forestFen.svg";
 import forestMixed from "./icons/forestMixed.svg";
 import grass from "./icons/grass.svg";
 import hill from "./icons/hill.svg";
+import jungle from "./icons/jungle.svg";
 import mountain from "./icons/mountain.svg";
 import volcanoExtinct from "./icons/volcanoExtinct.svg";
 
 const iconLibrary = {
   broken,
+  deadTree,
   dots,
   farm,
   fen,
@@ -26,6 +29,7 @@ const iconLibrary = {
   forestMixed,
   grass,
   hill,
+  jungle,
   mountain,
   volcanoExtinct,
 };

@@ -23,3 +23,9 @@ export function asArray<T>(item?: T | T[]) {
   if (Array.isArray(item)) return item;
   return [item];
 }
+
+export function setMapAdd<K, V>(map: Map<K, Set<V>>, key: K, value: V) {
+  const existing = map.get(key);
+  if (existing) existing.add(value);
+  else map.set(key, new Set<V>([value]));
+}

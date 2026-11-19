@@ -9,6 +9,7 @@
 .hexMap .icons,
 .hexMap .terrainIcons,
 .hexMap .rivers,
+.hexMap .riverNames,
 .hexMap .borders,
 .hexMap .overlays,
 .hexMap .zones {
@@ -57,6 +58,12 @@
 .hexMap .rivers polyline {
   fill: none;
   stroke-linecap: round;
+}
+
+.hexMap .riverNames text {
+  text-shadow: 0 0 2px black;
+  alignment-baseline: middle;
+  text-anchor: middle;
 }
 
 .hexMap .borders polygon {

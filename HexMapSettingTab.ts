@@ -34,13 +34,15 @@ export default class HexMapSettingTab extends PluginSettingTab {
     this.addNumberField("iconSize", "Icon Size");
     this.addNumberField("terrainIconSize", "Terrain Icon Size");
     this.addNumberField("riverWidth", "River Width");
-
-    new Setting(this.containerEl).setName("River Colour").addColorPicker((el) =>
-      el.setValue(this.plugin.settings.riverColour).onChange(async (value) => {
-        this.plugin.settings.riverColour = value;
-        await this.plugin.saveSettings();
-      }),
-    );
+    this.addColourField("riverColour", "River Colour");
+    this.addNumberField("borderThickness", "Border Thickness");
+    this.addNumberField("overlayOpacity", "Overlay Opacity");
+    this.addColourField("zoneColour", "Default Zone Colour");
+    this.addNumberField("regionOpacity", "Region Opacity");
+    this.addNumberField("minZoom", "Minimum Zoom");
+    this.addNumberField("maxZoom", "Maximum Zoom");
+    this.addColourField("terrainBg", "Terrain Default Background");
+    this.addColourField("terrainFg", "Terrain Default Foreground");
 
     containerEl.createEl("h2", { text: "Terrain Display" });
     const coloursEl = containerEl.createDiv();
@@ -66,6 +68,15 @@ export default class HexMapSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           },
         ).open();
+      }),
+    );
+  }
+
+  addColourField(key: StringKey, name: string) {
+    return new Setting(this.containerEl).setName(name).addColorPicker((el) =>
+      el.setValue(this.plugin.settings[key]).onChange(async (value) => {
+        this.plugin.settings[key] = value;
+        await this.plugin.saveSettings();
       }),
     );
   }

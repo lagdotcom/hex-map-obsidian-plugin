@@ -1,6 +1,6 @@
 import Hex from "hex/Hex";
 import Layout from "hex/Layout";
-import { edgeWalk } from "hex/maths";
+import { edgeWalk, getMidpoint } from "hex/maths";
 import { flat, pointy } from "hex/Orientation";
 import Point from "hex/Point";
 import { addTerrainSymbols, useTerrainSymbol } from "icons";
@@ -13,7 +13,7 @@ import {
   type MapZone,
 } from "parsing";
 import { HexMapPluginSettings } from "settings";
-import { isDefined } from "tools";
+import { isDefined, setMapAdd } from "tools";
 
 class CoordManager {
   top: number;
@@ -50,6 +50,9 @@ class CoordManager {
     this.top = Math.min(this.top, p.y);
     this.bot = Math.max(this.bot, p.y);
   };
+
+  centre = () =>
+    new Point((this.right + this.left) / 2, (this.bot + this.top) / 2);
 }
 
 function makeDisplayToggle({
@@ -175,9 +178,8 @@ class Zone {
   }
 
   getCentrePoint() {
-    const cx = (this.cm.left + this.cm.right) / 2;
-    const cy = (this.cm.bot + this.cm.top) / 2;
-    return [cx.toString(), cy.toString()];
+    const p = this.cm.centre();
+    return [p.x.toString(), p.y.toString()];
   }
 }
 
@@ -234,7 +236,7 @@ interface HexInfo {
 }
 
 function extractLinks(key: string, links?: FrontmatterLinkCache[]) {
-  const pattern = new RegExp(`^${key}(.\\d+)?$`);
+  const pattern = new RegExp(`^${key}(\\.\\d+)?$`);
   return links ? links.filter((l) => l.key.match(pattern)) : [];
 }
 
@@ -603,15 +605,6 @@ export default async function renderHexMap(
 
   addTerrainSymbols(svg, mapId, options.terrainIconSize);
 
-  // set up for zone labels
-  // const filter = defs.createSvg("filter", {
-  //   attr: { x: -0.05, y: -0.1, width: 1.1, height: 1.2, id: "hexMapSolid" },
-  // });
-  // filter.createSvg("feFlood", { attr: { "flood-color": "#00000040" } });
-  // filter.createSvg("feComposite", {
-  //   attr: { in: "SourceGraphic", operator: "xor" },
-  // });
-
   const getZoneHatching = (colours: string[], stripe: number) => {
     const id = `${mapId}-hatch-${colours
       .sort()
@@ -647,6 +640,7 @@ export default async function renderHexMap(
   const gZones = svg.createSvg("g", { cls: "zones" });
   const gCoords = svg.createSvg("g", { cls: "coords" });
   const gRegions = svg.createSvg("g", { cls: "regions" });
+  const gRiverNames = svg.createSvg("g", { cls: "riverNames" });
 
   const borders = (options.borders ?? []).map(
     (b) =>
@@ -701,6 +695,69 @@ export default async function renderHexMap(
         r.opacity ?? options.regionOpacity,
       ),
   ).sort((a, b) => a.label.localeCompare(b.label));
+
+  const riversByHex = new Map<string, Set<string>>();
+
+  const addRiverSegment = (
+    thickness: number,
+    points: Hex[],
+    name: string = "unknown river",
+  ) => {
+    for (const hex of points) setMapAdd(riversByHex, hex.toString(), name);
+
+    gRivers.createSvg("polyline", {
+      attr: {
+        stroke: options.riverColour,
+        "stroke-width": thickness,
+        points: toPointsString(points.map((h) => layout.toPixel(h))),
+      },
+    });
+  };
+
+  for (const { size, path } of rivers) {
+    const coords = path.map(getCoords).filter(isDefined);
+
+    addRiverSegment(
+      size,
+      coords.map((co) => Hex.fromQOffsetCoordinates(offset, co[0])),
+    );
+  }
+
+  for (const river of riverData) {
+    const accumulator: Hex[] = [];
+    let thickness = river.nodes[0].thickness;
+    const cm = new CoordManager(0);
+
+    for (const node of river.nodes) {
+      cm.addToBounds(layout.toPixel(node.hex));
+      if (node.thickness !== thickness) {
+        if (accumulator.length > 1)
+          addRiverSegment(thickness, accumulator, river.name);
+        accumulator.splice(0, accumulator.length - 1);
+        accumulator.push(node.hex);
+        thickness = node.thickness;
+      } else {
+        accumulator.push(node.hex);
+      }
+    }
+
+    if (accumulator.length > 1)
+      addRiverSegment(thickness, accumulator, river.name);
+
+    const size = river.nodes.reduce((hi, n) => Math.max(hi, n.thickness), 0);
+    const midpoint = getMidpoint(river.nodes.map((n) => n.hex));
+    const { x, y } = layout.toPixel(midpoint);
+    const label = gRiverNames.createSvg("text", {
+      attr: {
+        x,
+        y,
+        fill: options.riverColour,
+        "font-size": `${4 + size}px`,
+        // TODO figure out how to rotate name?
+      },
+    });
+    label.textContent = river.name;
+  }
 
   for (const {
     hex,
@@ -795,50 +852,22 @@ export default async function renderHexMap(
       titleLines.push(`Controller: ${zone.label}`);
     }
 
-    for (const r of regions)
+    const regionMatches: string[] = [];
+    for (const r of regions) {
       if (regionInfo.find((x) => x.name === r.label)) {
         for (const corner of corners) r.add(hex, corner);
-        titleLines.push(`Region: ${r.label}`);
+        regionMatches.push(r.label);
       }
+    }
+    if (regionMatches.length)
+      titleLines.push(`Region: ${regionMatches.join(", ")}`);
+
+    const riverNames = riversByHex.get(hex.toString());
+    if (riverNames)
+      titleLines.push(`River: ${Array.from(riverNames).join(", ")}`);
 
     const title = polygon.createSvg("title");
     title.textContent = titleLines.join("\n");
-  }
-
-  const addRiverSegment = (thickness: number, points: Hex[]) =>
-    gRivers.createSvg("polyline", {
-      attr: {
-        stroke: options.riverColour,
-        "stroke-width": thickness,
-        points: toPointsString(points.map((h) => layout.toPixel(h))),
-      },
-    });
-
-  for (const { size, path } of rivers) {
-    const coords = path.map(getCoords).filter(isDefined);
-
-    addRiverSegment(
-      size,
-      coords.map((co) => Hex.fromQOffsetCoordinates(offset, co[0])),
-    );
-  }
-
-  for (const river of riverData) {
-    const accumulator: Hex[] = [];
-    let thickness = river.nodes[0].thickness;
-
-    for (const node of river.nodes) {
-      if (node.thickness !== thickness) {
-        if (accumulator.length > 1) addRiverSegment(thickness, accumulator);
-        accumulator.splice(0, accumulator.length - 1);
-        accumulator.push(node.hex);
-        thickness = node.thickness;
-      } else {
-        accumulator.push(node.hex);
-      }
-    }
-
-    if (accumulator.length > 1) addRiverSegment(thickness, accumulator);
   }
 
   addPanelSection(panel, gBorders, borders, "Borders");
@@ -846,10 +875,21 @@ export default async function renderHexMap(
 
   if (rivers.length || riverData.length) {
     const panelRivers = panel.createEl("section");
+
+    const items = panelRivers.createDiv({ cls: "list" });
+    makeDisplayToggle({
+      parent: items,
+      g: gRiverNames,
+      text: "Names",
+      value: false,
+    });
+
     makeDisplayToggle({
       parent: panelRivers,
       g: gRivers,
       text: "Rivers",
+      items,
+      prepend: true,
     }).classList.add("heading");
   }
 
@@ -913,8 +953,8 @@ export default async function renderHexMap(
   if (!panel.childElementCount) panel.remove();
 
   const pz = createPanZoom(svg, {
-    minZoom: 0.5,
-    maxZoom: 3,
+    minZoom: options.minZoom,
+    maxZoom: options.maxZoom,
     onClick: (e) => {
       if (e.target instanceof HTMLElement || e.target instanceof SVGElement) {
         const name = e.target.dataset["name"];
