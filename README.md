@@ -16,9 +16,9 @@ May be specified in `[X, Y]` or `XX.YY` or `XX,YY` format. If you're using the l
 
 ### Maps
 
-Declare a `hexMap` block inside a page. Only `key` is required:
+Declare a `hexmap` block inside a page. Only `key` is required:
 
-    ```hexMap
+    ```hexmap
     key: <KEY>
     centre: "05.05" | this
     maxDistance: 10
