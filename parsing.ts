@@ -1,7 +1,8 @@
-import OffsetCoordinates from "hex/OffsetCoordinates";
 import { parseYaml } from "obsidian";
-import { HexMapPluginSettings } from "settings";
-import { toInt } from "tools";
+
+import OffsetCoordinates from "./hex/OffsetCoordinates";
+import { HexMapPluginSettings } from "./settings";
+import { toInt } from "./tools";
 
 export interface MapRiver {
   size: number;

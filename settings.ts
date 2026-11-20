@@ -1,5 +1,5 @@
-import { TerrainIconName } from "icons";
-import { KeysMatching } from "tools";
+import { TerrainIconName } from "./icons";
+import { KeysMatching } from "./tools";
 
 export interface TerrainSettings {
   fg: string;
@@ -18,8 +18,8 @@ const ts = (
 });
 
 export interface HexMapPluginSettings {
-  orientation: string;
-  offset: string;
+  orientation: string; // 'flat' | 'pointy'
+  offset: string; // 'even' | 'odd'
   terrainKey: string;
   iconKey: string;
   regionKey: string;

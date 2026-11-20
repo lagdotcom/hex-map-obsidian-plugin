@@ -6,5 +6,6 @@
   "description": "Generates hex maps!",
   "author": "Lag.Com",
   "authorUrl": "https://lag.codes",
+  "helpUrl": "https://github.com/lagdotcom/hex-map-obsidian-plugin",
   "isDesktopOnly": false
 }

@@ -1,14 +1,15 @@
-import { iconOptions, TerrainIconName } from "icons";
-import HexMapPlugin from "main";
 import { App, PluginSettingTab, Setting } from "obsidian";
+
+import { iconOptions, TerrainIconName } from "./icons";
+import HexMapPlugin from "./main";
 import {
   DEFAULT_SETTINGS,
   NumberKey,
   StringKey,
   TerrainSettings,
-} from "settings";
-import TextModal from "TextModal";
-import { asNumber } from "tools";
+} from "./settings";
+import TextModal from "./TextModal";
+import { asNumber } from "./tools";
 
 export default class HexMapSettingTab extends PluginSettingTab {
   constructor(

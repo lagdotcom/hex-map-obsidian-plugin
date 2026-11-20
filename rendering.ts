@@ -1,19 +1,20 @@
-import Hex from "hex/Hex";
-import Layout from "hex/Layout";
-import { edgeWalk, getMidpoint } from "hex/maths";
-import { flat, pointy } from "hex/Orientation";
-import Point from "hex/Point";
-import { addTerrainSymbols, useTerrainSymbol } from "icons";
 import { App, type FrontmatterLinkCache, type TFile } from "obsidian";
 import createPanZoom from "panzoom";
+
+import Hex from "./hex/Hex";
+import Layout from "./hex/Layout";
+import { edgeWalk, getMidpoint } from "./hex/maths";
+import { flat, pointy } from "./hex/Orientation";
+import Point from "./hex/Point";
+import { addTerrainSymbols, useTerrainSymbol } from "./icons";
 import {
   getCoords,
   getOptions,
   type HexMapOptions,
   type MapZone,
-} from "parsing";
-import { HexMapPluginSettings } from "settings";
-import { isDefined, setMapAdd } from "tools";
+} from "./parsing";
+import { HexMapPluginSettings } from "./settings";
+import { isDefined, setMapAdd } from "./tools";
 
 class CoordManager {
   top: number;
@@ -541,10 +542,9 @@ export default async function renderHexMap(
     }
   }
 
-  const shouldExclude =
-    matchedHexes.length && isDefined(options.maxDistance)
-      ? getMaxDistanceFilter(matchedHexes, options.maxDistance)
-      : undefined;
+  const shouldExclude = matchedHexes.length
+    ? getMaxDistanceFilter(matchedHexes, options.maxDistance ?? 1)
+    : undefined;
 
   const regionMap = new Map<string, ZoneInfo>();
   const zoneMap = new Map<string, ZoneInfo>();

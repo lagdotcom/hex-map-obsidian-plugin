@@ -1,7 +1,8 @@
-import HexMapSettingTab from "HexMapSettingTab";
 import { Plugin } from "obsidian";
-import renderHexMap from "rendering";
-import { DEFAULT_SETTINGS, HexMapPluginSettings } from "settings";
+
+import HexMapSettingTab from "./HexMapSettingTab";
+import renderHexMap from "./rendering";
+import { DEFAULT_SETTINGS, HexMapPluginSettings } from "./settings";
 
 let mapCount = 0;
 
